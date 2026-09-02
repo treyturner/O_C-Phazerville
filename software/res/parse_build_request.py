@@ -2,14 +2,33 @@ import os
 
 comment_text = os.environ['GH_COMMENT']
 
-flags = comment_text.replace(',', ' ').replace(';', ' ').split()
-custom_defines = "-DCUSTOM_BUILD"
+flags = []
+for item in comment_text.replace(',', ' ').replace(';', ' ').split():
+    if '=' in item:
+        key, item = item.split('=', 1)
+        if key.lower() == 'target':
+            continue
+    flags.append(item.lstrip('+'))
+
+custom_defines = "-DCUSTOM_BUILD -DTEENSY_OPT_SMALLEST_CODE_LTO"
 pewcount = 0
 
 for item in flags:
     f = item.strip().upper()
     if f.startswith('NOHEMI') or f.startswith('NO_HEM'):
         custom_defines += " -DNO_HEMISPHERE"
+    if f.startswith('NOWAVE') or f.startswith('NO_WAVE'):
+        custom_defines += " -DNO_WAVEFORM_EDITOR"
+    if f.startswith('NOPONGLET') or f.startswith('NO_PONGLET') or f.startswith('NO_APPLET_PONGLET'):
+        custom_defines += " -DNO_APPLET_PONGLET"
+    if f.startswith('NOTUNER') or f.startswith('NO_TUNER') or f.startswith('NO_APPLET_TUNER'):
+        custom_defines += " -DNO_APPLET_TUNER"
+    if f.startswith('NOSCOPE') or f.startswith('NO_SCOPE') or f.startswith('NO_APPLET_SCOPE'):
+        custom_defines += " -DNO_APPLET_SCOPE"
+    if f.startswith('NOGAMEOFLIFE') or f.startswith('NO_GAMEOFLIFE') or f.startswith('NO_PEW_GAMEOFLIFE'):
+        custom_defines += " -DNO_PEW_GAMEOFLIFE"
+    if f.startswith('NODISPLAYDMA') or f.startswith('NO_DISPLAY_DMA'):
+        custom_defines += " -DNO_DISPLAY_DMA"
     if f.startswith('VOR'):
         custom_defines += " -DVOR"
     if f.startswith('BUCHLA') or f.startswith('NLM') or f.startswith('NORTHERN'):
@@ -32,9 +51,9 @@ for item in flags:
         custom_defines += " -DENABLE_APP_MIDI"
     if f.startswith('PIQUED'):
         custom_defines += " -DENABLE_APP_PIQUED"
-    if f.startswith('QUADRAT'):
+    if f.startswith('QUADRAT') or f.startswith('POLYLFO'):
         custom_defines += " -DENABLE_APP_POLYLFO"
-    if f.startswith('HARRING'):
+    if f.startswith('HARRING') or f.startswith('H1200'):
         custom_defines += " -DENABLE_APP_H1200"
     if f.startswith('BYTE') or f.startswith('VIZNUT'):
         custom_defines += " -DENABLE_APP_BYTEBEATGEN"
@@ -44,13 +63,13 @@ for item in flags:
         custom_defines += " -DENABLE_APP_DARKEST_TIMELINE"
     if f.startswith('LOW-RENT') or f.startswith('LORENZ'):
         custom_defines += " -DENABLE_APP_LORENZ"
-    if f.startswith('COPIER'):
+    if f.startswith('COPIER') or f.startswith('ASR'):
         custom_defines += " -DENABLE_APP_ASR"
     if f.startswith('QUANTER'):
         custom_defines += " -DENABLE_APP_QUANTERMAIN"
     if f.startswith('META'):
         custom_defines += " -DENABLE_APP_METAQ"
-    if f.startswith('ACID'):
+    if f.startswith('ACID') or f.startswith('CHORDS'):
         custom_defines += " -DENABLE_APP_CHORDS"
     if f.startswith('PASSEN'):
         custom_defines += " -DENABLE_APP_PASSENCORE"

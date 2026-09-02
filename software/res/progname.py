@@ -30,6 +30,8 @@ if "USB_MTPDISK" in defines:
 if "T41" not in env['PIOENV']:
     version = get_version()
     for item in defines:
+        if item[0] == 'OC_VERSION_SUFFIX':
+            version += "_" + item[1]
         if item[0] == 'OC_VERSION_EXTRA':
             version += item[1].strip('"')
     env.Replace(PROGNAME=f"o_C-phazerville-{version}-{tag}")
