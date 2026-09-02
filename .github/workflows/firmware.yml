@@ -14,6 +14,9 @@ on:
         description: 'Optional upstream tag, branch, or SHA to build'
         required: false
 
+permissions:
+  contents: write
+
 env:
   UPSTREAM_REPOSITORY: djphazer/O_C-Phazerville
   FULL_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+NOWAVE,+NOGAMEOFLIFE,+NOPONGLET,+NOTUNER
@@ -80,12 +83,15 @@ jobs:
     - name: Setup build metadata
       if: steps.upstream-release-cache.outputs.cache-hit != 'true'
       run: |
-        version="$(tail -n 1 software/src/OC_version.h | tr -d '"')"
+        upstream_version="$(tail -n 1 software/src/OC_version.h | tr -d '"')"
+        release_version="${upstream_version}+build.${GITHUB_RUN_NUMBER}"
         short_sha="${SOURCE_SHORT_SHA:-$(git rev-parse --short HEAD)}"
         {
-          echo "OC_VERSION=${version}"
+          echo "UPSTREAM_VERSION=${upstream_version}"
+          echo "BUILD_ID=${GITHUB_RUN_NUMBER}"
+          echo "RELEASE_VERSION=${release_version}"
           echo "SOURCE_SHORT_SHA=${short_sha}"
-          echo "OC_ARTIFACT_TAG=${version}-${short_sha}"
+          echo "OC_ARTIFACT_TAG=${release_version}-${short_sha}"
         } >> "$GITHUB_ENV"
 
     - name: Cache PlatformIO
@@ -131,25 +137,25 @@ jobs:
           "full Hemisphere T32 custom firmware" \
           "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
           "T32_pewpewpew" \
-          "../artifacts/o_C-phazerville-${OC_VERSION}_T32_pewpewpew-${SOURCE_SHORT_SHA}.hex"
+          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_pewpewpew-${SOURCE_SHORT_SHA}.hex"
 
         build_firmware \
           "full Hemisphere VOR T32 custom firmware" \
           "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} ${FULL_VOR_EXTRA_BUILD_FLAGS} -DVOR" \
           "T32_VOR_pewpewpew" \
-          "../artifacts/o_C-phazerville-${OC_VERSION}_T32_VOR_pewpewpew-${SOURCE_SHORT_SHA}.hex"
+          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_pewpewpew-${SOURCE_SHORT_SHA}.hex"
 
         build_firmware \
           "lean Hemisphere T32 custom firmware" \
           "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
           "T32_lean" \
-          "../artifacts/o_C-phazerville-${OC_VERSION}_T32_lean-${SOURCE_SHORT_SHA}.hex"
+          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_lean-${SOURCE_SHORT_SHA}.hex"
 
         build_firmware \
           "lean Hemisphere VOR T32 custom firmware" \
           "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
           "T32_VOR_lean" \
-          "../artifacts/o_C-phazerville-${OC_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
+          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
 
     - name: Upload artifact
       if: steps.upstream-release-cache.outputs.cache-hit != 'true'
@@ -158,6 +164,27 @@ jobs:
         name: o_C-${{env.OC_ARTIFACT_TAG}}
         include-hidden-files: true
         path: artifacts/*.hex
+
+    - name: Publish release
+      if: github.ref == 'refs/heads/main' && steps.upstream-release-cache.outputs.cache-hit != 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        notes_file="$(mktemp)"
+        cat > "${notes_file}" <<EOF
+        Custom Phazerville firmware build ${RELEASE_VERSION}.
+
+        Upstream version: ${UPSTREAM_VERSION}
+        Build id: ${BUILD_ID}
+        Source short SHA: ${SOURCE_SHORT_SHA}
+        EOF
+
+        gh release create "${RELEASE_VERSION}" artifacts/*.hex \
+          --repo "${GITHUB_REPOSITORY}" \
+          --target "${GITHUB_SHA}" \
+          --title "Phazerville ${RELEASE_VERSION}" \
+          --notes-file "${notes_file}" \
+          --latest
 
     - name: Mark upstream release built
       if: steps.source.outputs.upstream_release == 'true' && steps.upstream-release-cache.outputs.cache-hit != 'true'
