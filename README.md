@@ -70,6 +70,66 @@ Or use `T40` for Teensy 4.0. Have a look inside `platformio.ini` for alternative
 
 _**Pro-tip**_: If you decide to fork the project, and enable GitHub Actions on your own repo, GitHub will build the files for you... ;)
 
+### T32 custom build size notes
+
+This fork builds paired Teensy 3.2 firmware with `software/build_custom_pair.sh` and `.github/workflows/firmware.yml`. Each target gets a full-Hemisphere build and a lean-Hemisphere build.
+
+Full Hemisphere:
+```
+PEWPEWPEW, NOWAVE, NOGAMEOFLIFE, NOPONGLET, NOTUNER
+```
+
+Lean Hemisphere:
+```
+MIDI, AUTOMATONNETZ
+```
+
+All T32 builds use `NO_DISPLAY_DMA` for display reliability on open-source Teensy 3.2 modules, and divide app ISR processing by eight to keep the non-DMA display path from starving the main loop. The full normal T32 build keeps Scope. The full VOR build additionally strips Scope with `NO_APPLET_SCOPE`. The lean builds keep Wave-Edit.
+
+| Build | Target | RAM | Flash | Flash left |
+| --- | --- | ---: | ---: | ---: |
+| Full Hemisphere | T32 | 26,920 / 65,536 bytes | 260,100 / 262,144 bytes | 2,044 bytes |
+| Full Hemisphere | T32 VOR | 27,036 / 65,536 bytes | 261,256 / 262,144 bytes | 888 bytes |
+| Lean Hemisphere | T32 | 29,324 / 65,536 bytes | 258,480 / 262,144 bytes | 3,664 bytes |
+| Lean Hemisphere | T32 VOR | 29,444 / 65,536 bytes | 261,104 / 262,144 bytes | 1,040 bytes |
+
+For comparison, the table below uses a VOR build with lean Hemisphere plus Captain MIDI as the baseline. Lean Hemisphere is the default `CUSTOM_BUILD` applet set, with the `PEWPEWPEW` extras left out. The build also includes the always-present utility apps: Setup/About, ScaleEdit, Wave-Edit, and Back It Up.
+
+| Resource | Used | Left |
+| --- | ---: | ---: |
+| RAM | 27,208 / 65,536 bytes | 38,328 bytes |
+| Flash | 256,060 / 262,144 bytes | 6,084 bytes |
+
+App and applet deltas below were measured one option at a time against that VOR baseline. Multiple options may not add up exactly because shared code and app-data storage can interact.
+
+| Option | Build flag | RAM delta | Flash delta | VOR result |
+| --- | --- | ---: | ---: | --- |
+| Passencore | `PASSENCORE` | +0 bytes | +0 bytes | Not currently linked |
+| Pong | `PONG` | +444 bytes | +2,404 bytes | Fits |
+| Low-rents / Lorenz | `LORENZ` | +872 bytes | +2,464 bytes | Fits |
+| Dialectic Ping Pong / BBGen | `BBGEN` | +816 bytes | +2,960 bytes | Fits |
+| Viznutcracker / Bytebeat | `BYTEBEAT` | +1,480 bytes | +3,224 bytes | Fits |
+| The Darkest Timeline | `DARKEST` | +428 bytes | +3,668 bytes | Fits |
+| Calibr8or | `CALIBR8OR` | +940 bytes | +4,820 bytes | Fits |
+| Automatonnetz | `AUTOMATONNETZ` | +2,324 bytes | +5,260 bytes | Fits |
+| References | `REFERENCES` | +1,248 bytes | +5,852 bytes | Fits |
+| Extra applet pack | `PEWPEWPEW` | Not measured | +11,272 bytes | Too large by 5,188 bytes |
+| Scenery / Scenes | `SCENES` | +772 bytes | +6,736 bytes | Too large by 652 bytes |
+| Enigma | `ENIGMA` | Not measured | +6,920 bytes | Too large by 836 bytes |
+| Harrington 1200 | `H1200` | +940 bytes | +7,092 bytes | Too large by 1,008 bytes |
+| Piqued | `PIQUED` | Not measured | +9,120 bytes | Too large by 3,036 bytes |
+| Meta-Q | `METAQ` | +808 bytes | +9,716 bytes | Too large by 3,632 bytes |
+| CopierMaschine / ASR | `ASR` | +1,308 bytes | +9,756 bytes | Too large by 3,672 bytes |
+| Quadraturia / Poly LFO | `POLYLFO` | +2,580 bytes | +10,260 bytes | Too large by 4,176 bytes |
+| Acid Curds / Chords | `CHORDS` | +488 bytes | +10,492 bytes | Too large by 4,408 bytes |
+| Neural Net | `NEURAL` | +1,540 bytes | +10,988 bytes | Too large by 4,904 bytes |
+| Quantermain | `QUANTERMAIN` | +2,104 bytes | +12,420 bytes | Too large by 6,396 bytes |
+| Sequins | `SEQUINS` | Not measured | +17,696 bytes | Too large by 11,612 bytes |
+
+`NOWAVE` removes the Wave-Edit full-screen app. `PEWPEWPEW` enables the extra applet pack and raises the custom Hemisphere preset count from four to eight. To make the full builds fit on T32, this fork drops Game of Life, Ponglet, and Tuner on both targets; VOR also drops Scope.
+
+Passencore measures as zero because `AppPassencore` is currently commented out of the custom app container.
+
 ### Option 2: Arduino IDE
 Instead of Platform IO, you can use the latest version of the Arduino IDE + Teensyduino extension. The newer 2.x series should work, no need to install an old version.
 
