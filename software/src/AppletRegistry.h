@@ -47,7 +47,9 @@ struct Registry {
         std::array<FactoryFn, Size> arr{
           (+[]() -> T* {
             void* block = (OC::CORE::FreeRam() > OC::CORE::RAM2_HEADROOM) ? calloc(1, Declarations::size) : nullptr;
+#if defined(__IMXRT1062__)
             if (!block) block = extmem_calloc(1, Declarations::size);
+#endif
             if (block) return new (block) typename Declarations::type();
             return nullptr;
            }) ...
@@ -104,7 +106,11 @@ struct Registry {
             Serial.printf("Free RAM: %d\n", OC::CORE::FreeRam());
             Serial.printf("AppletRegistry: new - ID: %u Index: %d Slot: %u\n", id, idx, slot);
             instances[slot][idx] = factories[idx]();
-            Serial.println(instances[slot][idx]->applet_name());
+            if (instances[slot][idx]) {
+                Serial.println(instances[slot][idx]->applet_name());
+            } else {
+                Serial.println("AppletRegistry: allocation failed");
+            }
         }
         return instances[slot][idx];
     }

@@ -51,11 +51,25 @@ public:
   AppSwitcher() { }
   ~AppSwitcher() { }
 
-  void Init(bool reset_settings);
+  bool Init(bool reset_settings);
 
   void set_current_app(size_t index);
   inline AppBase *current_app() const { return static_cast<AppBase *>(current_app_.instance); }
   inline const RuntimeSlot &current_slot() const { return current_app_; }
+
+#ifdef PHZ_BOOT_BREADCRUMBS
+  inline void DebugRead(IOFrame *ioframe) {
+    if (current_app_.instance) IO::Read(ioframe, &current_app_.io_settings());
+  }
+
+  inline void DebugRun(IOFrame *ioframe) {
+    if (current_app_.instance) current_app_.Process(current_app_.instance, ioframe);
+  }
+
+  inline void DebugWrite(IOFrame *ioframe) {
+    if (current_app_.instance) IO::Write(ioframe, &current_app_.io_settings());
+  }
+#endif
 
   inline void Process(IOFrame *ioframe) __attribute__((always_inline)) {
     if (current_app_.instance) {

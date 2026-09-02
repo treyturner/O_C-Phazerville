@@ -36,7 +36,9 @@
 
 // NOTE: Don't disable DMA unless you absolutely know what you're doing. It will hurt you.
 #if defined(__MK20DX256__)
+#ifndef NO_DISPLAY_DMA
 #define DMA_PAGE_TRANSFER
+#endif
 #ifdef DMA_PAGE_TRANSFER
 #include <DMAChannel.h>
 static DMAChannel page_dma;

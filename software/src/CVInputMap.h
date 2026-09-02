@@ -43,6 +43,12 @@ public:
   util::SemitoneQuantizer semitone_quant;
 
   const bool enabled() const { return source != 0; }
+  uint8_t get_source() const {
+    return source;
+  }
+  void set_source(uint8_t value) {
+    source = value;
+  }
   SourceType source_type() const {
     return (SourceType)(source & (0x7 << 5)); // upper 3 bits
   }
@@ -479,6 +485,12 @@ public:
   }
 
   const bool enabled() const { return source != 0; }
+  uint8_t get_source() const {
+    return source;
+  }
+  void set_source(uint8_t value) {
+    source = value;
+  }
   DigitalSourceType source_type() const {
     return (DigitalSourceType)(source & (0x7 << 5)); // upper 3 bits
   }

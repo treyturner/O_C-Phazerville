@@ -102,6 +102,16 @@ enum GlobalSettingsDataKeys : uint16_t {
 };
 #endif
 
+#ifndef __IMXRT1062__
+FLASHMEM
+static void InvalidateEEPROMPages(size_t base_addr, size_t page_size, size_t pages) {
+  const uint32_t invalid_fourcc = 0;
+  for (size_t i = 0; i < pages; ++i) {
+    EEPROMStorage::update(base_addr + i * page_size, &invalid_fourcc, sizeof(invalid_fourcc));
+  }
+}
+#endif
+
 FLASHMEM
 static void SaveGlobalSettings() {
   APPS_SERIAL_PRINTLN("Save global settings");
@@ -226,13 +236,7 @@ static void SaveGlobalSettings() {
     global_settings.q_engines[i].root_note = HS::q_engine[i].root_note;
   }
   for (int i = 0; i < MIDIMAP_MAX; ++i) {
-    global_settings.midi_maps[i].channel       = HS::frame.MIDIState.mapping[i].channel      ;
-    global_settings.midi_maps[i].dac_polyvoice = HS::frame.MIDIState.mapping[i].dac_polyvoice;
-    global_settings.midi_maps[i].function      = HS::frame.MIDIState.mapping[i].function     ;
-    global_settings.midi_maps[i].function_cc   = HS::frame.MIDIState.mapping[i].function_cc  ;
-    global_settings.midi_maps[i].transpose     = HS::frame.MIDIState.mapping[i].transpose    ;
-    global_settings.midi_maps[i].range_low     = HS::frame.MIDIState.mapping[i].range_low    ;
-    global_settings.midi_maps[i].range_high    = HS::frame.MIDIState.mapping[i].range_high   ;
+    global_settings.midi_maps[i] = HS::frame.MIDIState.mapping[i].get_settings();
   }
 
   global_settings_storage.Save(global_settings);
@@ -357,12 +361,12 @@ void AppSwitcher::set_current_app(size_t index)
   global_settings.current_app_id = current_app_.id();
   #ifdef VOR
   VBiasManager *vbias_m = vbias_m->get();
-  vbias_m->SetStateForApp(current_app_);
+  vbias_m->SetStateForApp(static_cast<AppBase *>(current_app_.instance));
   #endif
 }
 
 FLASHMEM
-void AppSwitcher::Init(bool reset_settings) {
+bool AppSwitcher::Init(bool reset_settings) {
 
   APPS_SERIAL_PRINTLN("Init");
   app_container.for_each([](RuntimeSlot app) {
@@ -389,6 +393,7 @@ void AppSwitcher::Init(bool reset_settings) {
   global_settings.current_app_id = DEFAULT_APP_ID;
   memset(HS::user_turing_machines, 0, sizeof(HS::user_turing_machines));
 
+#ifdef __IMXRT1062__
   uint64_t data = 0;
   // check metadata for validity
   if (PhzConfig::getValue(METADATA_KEY, data)) {
@@ -400,21 +405,62 @@ void AppSwitcher::Init(bool reset_settings) {
     //global_settings.DAC_scaling = Unpack(data, PackLocation{32, 32});
     //OC::DAC::restore_scaling(global_settings.DAC_scaling);
   }
+#else // Teensy 3.2
+  APPS_SERIAL_PRINTLN("Load global settings: size: %u, PAGESIZE=%u, PAGES=%u, LENGTH=%u",
+                sizeof(GlobalSettings),
+                GlobalSettingsStorage::PAGESIZE,
+                GlobalSettingsStorage::PAGES,
+                GlobalSettingsStorage::LENGTH);
+
+  if (!global_settings_storage.Load(global_settings)) {
+    APPS_SERIAL_PRINTLN("Settings invalid, using defaults!");
+  } else {
+    APPS_SERIAL_PRINTLN("Loaded settings from page_index %d, current_app_id is %02x",
+                  global_settings_storage.page_index(),global_settings.current_app_id);
+    memcpy(user_scales, global_settings.user_scales, sizeof(user_scales));
+    memcpy(user_patterns, global_settings.user_patterns, sizeof(user_patterns));
+#ifdef ENABLE_APP_CHORDS
+    memcpy(user_chords, global_settings.user_chords, sizeof(user_chords));
+#else
+    memcpy(HS::user_turing_machines, global_settings.user_turing_machines, sizeof(HS::user_turing_machines));
+#endif
+#ifndef NO_HEMISPHERE
+    memcpy(HS::user_waveforms, global_settings.user_waveforms, sizeof(HS::user_waveforms));
+#endif
+
+    // restore q_engines and midi_maps
+    for (int i = 0; i < QUANT_CHANNEL_COUNT; ++i) {
+      HS::q_engine[i].scale     = global_settings.q_engines[i].scale;
+      HS::q_engine[i].mask      = global_settings.q_engines[i].mask;
+      HS::q_engine[i].octave    = global_settings.q_engines[i].octave;
+      HS::q_engine[i].root_note = global_settings.q_engines[i].root_note;
+      HS::q_engine[i].Reconfig();
+    }
+    for (int i = 0; i < MIDIMAP_MAX; ++i) {
+      HS::frame.MIDIState.mapping[i].set_settings(global_settings.midi_maps[i]);
+    }
+    HS::frame.MIDIState.UpdateMidiChannelFilter();
+    HS::frame.MIDIState.UpdateMaxPolyphony();
+  }
+#endif
 
   if (reset_settings || !global_settings.valid) {
     if (ui.ConfirmReset()) {
+      reset_settings = true;
       APPS_SERIAL_PRINTLN("Erase EEPROM ...");
-      EEPtr d = EEPROM_GLOBALSETTINGS_START;
-      size_t len = EEPROMStorage::LENGTH - EEPROM_GLOBALSETTINGS_START;
-      while (len--)
-        *d++ = 0;
-      APPS_SERIAL_PRINTLN("...done");
-      APPS_SERIAL_PRINTLN("Skip settings, using defaults...");
 #ifdef __IMXRT1062__
       PhzConfig::eraseFiles();
 #else
+      InvalidateEEPROMPages(EEPROM_GLOBALSETTINGS_START,
+                            GlobalSettingsStorage::PAGESIZE,
+                            GlobalSettingsStorage::PAGES);
+      InvalidateEEPROMPages(EEPROM_APPDATA_START,
+                            AppDataStorage::PAGESIZE,
+                            AppDataStorage::PAGES);
       global_settings_storage.Init();
 #endif
+      APPS_SERIAL_PRINTLN("...done");
+      APPS_SERIAL_PRINTLN("Skip settings, using defaults...");
       app_data_storage.Init();
       global_settings.valid = true;
       SaveGlobalSettings();
@@ -529,49 +575,6 @@ void AppSwitcher::Init(bool reset_settings) {
       */
     }
 
-#else // Teensy 3.2
-    APPS_SERIAL_PRINTLN("Load global settings: size: %u, PAGESIZE=%u, PAGES=%u, LENGTH=%u",
-                  sizeof(GlobalSettings),
-                  GlobalSettingsStorage::PAGESIZE,
-                  GlobalSettingsStorage::PAGES,
-                  GlobalSettingsStorage::LENGTH);
-
-    if (!global_settings_storage.Load(global_settings)) {
-      APPS_SERIAL_PRINTLN("Settings invalid, using defaults!");
-    } else {
-      APPS_SERIAL_PRINTLN("Loaded settings from page_index %d, current_app_id is %02x",
-                    global_settings_storage.page_index(),global_settings.current_app_id);
-      memcpy(user_scales, global_settings.user_scales, sizeof(user_scales));
-      memcpy(user_patterns, global_settings.user_patterns, sizeof(user_patterns));
-#ifdef ENABLE_APP_CHORDS
-      memcpy(user_chords, global_settings.user_chords, sizeof(user_chords));
-#else
-      memcpy(HS::user_turing_machines, global_settings.user_turing_machines, sizeof(HS::user_turing_machines));
-#endif
-#ifndef NO_HEMISPHERE
-      memcpy(HS::user_waveforms, global_settings.user_waveforms, sizeof(HS::user_waveforms));
-#endif
-
-      // restore q_engines and midi_maps
-      for (int i = 0; i < QUANT_CHANNEL_COUNT; ++i) {
-        HS::q_engine[i].scale     = global_settings.q_engines[i].scale;
-        HS::q_engine[i].mask      = global_settings.q_engines[i].mask;
-        HS::q_engine[i].octave    = global_settings.q_engines[i].octave;
-        HS::q_engine[i].root_note = global_settings.q_engines[i].root_note;
-        HS::q_engine[i].Reconfig();
-      }
-      for (int i = 0; i < MIDIMAP_MAX; ++i) {
-        HS::frame.MIDIState.mapping[i].channel       = global_settings.midi_maps[i].channel      ;
-        HS::frame.MIDIState.mapping[i].dac_polyvoice = global_settings.midi_maps[i].dac_polyvoice;
-        HS::frame.MIDIState.mapping[i].function      = global_settings.midi_maps[i].function     ;
-        HS::frame.MIDIState.mapping[i].function_cc   = global_settings.midi_maps[i].function_cc  ;
-        HS::frame.MIDIState.mapping[i].transpose     = global_settings.midi_maps[i].transpose    ;
-        HS::frame.MIDIState.mapping[i].range_low     = global_settings.midi_maps[i].range_low    ;
-        HS::frame.MIDIState.mapping[i].range_high    = global_settings.midi_maps[i].range_high   ;
-      }
-      HS::frame.MIDIState.UpdateMidiChannelFilter();
-      HS::frame.MIDIState.UpdateMaxPolyphony();
-    }
 #endif
 
     // old school EEPROM storage for legacy apps
@@ -610,6 +613,7 @@ void AppSwitcher::Init(bool reset_settings) {
   set_current_app(current_app_index);
 
   delay(100);
+  return reset_settings;
 }
 
 FLASHMEM
