@@ -163,6 +163,17 @@ struct MIDIMapping : protected MIDIMapSettings {
   int16_t pitch_bend = 0;
 
   // functions
+  MIDIMapSettings get_settings() const {
+    return *this;
+  }
+  void set_settings(const MIDIMapSettings &settings) {
+    static_cast<MIDIMapSettings&>(*this) = settings;
+    gate_retrig = false;
+    trigout_countdown = 0;
+    semitone_mask = 0;
+    output = 0;
+    pitch_bend = 0;
+  }
   const Type get_type() const {
     return Type(function & TYPE_MASK);
   }

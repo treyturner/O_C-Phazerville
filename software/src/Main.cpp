@@ -48,6 +48,10 @@
 
 #include "PhzConfig.h"
 
+#if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA) && !defined(PHZ_APP_ISR_DIVIDER)
+#define PHZ_APP_ISR_DIVIDER 8
+#endif
+
 #if defined(ARDUINO_TEENSY41)
 USBHost thisUSB;
 USBHub hub1(thisUSB);
@@ -95,6 +99,33 @@ uint_fast8_t MENU_REDRAW = true;
 static OC::UiMode ui_mode = OC::UI_MODE_MENU;
 static OC::IOFrame io_frame;
 
+#ifdef PHZ_BOOT_BREADCRUMBS
+FLASHMEM
+static void BootBreadcrumb(const char *label) {
+  SERIAL_PRINTLN("[BOOT] %s", label);
+  GRAPHICS_BEGIN_FRAME(true);
+  graphics.setPrintPos(0, 0);
+  graphics.print("BOOT TRACE");
+  graphics.setPrintPos(0, 12);
+  graphics.print(label);
+  GRAPHICS_END_FRAME();
+  delay(250);
+}
+
+#define BOOT_BREADCRUMB(label) BootBreadcrumb(label)
+#define BOOT_BREADCRUMB_ONCE(name, label) \
+  do { \
+    static bool name##_shown = false; \
+    if (!name##_shown) { \
+      name##_shown = true; \
+      BootBreadcrumb(label); \
+    } \
+  } while (0)
+#else
+#define BOOT_BREADCRUMB(label) do {} while (0)
+#define BOOT_BREADCRUMB_ONCE(name, label) do {} while (0)
+#endif
+
 /*  ------------------------ UI timer ISR ---------------------------   */
 
 IntervalTimer UI_timer;
@@ -122,9 +153,19 @@ void FASTRUN CORE_timer_ISR() {
   // a DMA transfer to the display things are fairly nicely interleaved. In the
   // next ISR, the display transfer is finalized (CS update).
 
+#if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA)
+  DAC::Update();
+  static uint8_t display_update_prescaler = 0;
+  if (++display_update_prescaler >= 8) {
+    display_update_prescaler = 0;
+    display::Flush();
+    display::Update();
+  }
+#else
   display::Flush();
   DAC::Update();
   display::Update();
+#endif
 
   // see OC_ADC.h for details; empirically (with current parameters), Scan_DMA() picks up new samples @ 5.55kHz
   OC::ADC::Scan_DMA();
@@ -135,7 +176,15 @@ void FASTRUN CORE_timer_ISR() {
 
   ++CORE::ticks;
   if (CORE::app_isr_enabled) {
+#if defined(PHZ_APP_ISR_DIVIDER) && PHZ_APP_ISR_DIVIDER > 1
+    static uint8_t app_isr_prescaler = 0;
+    if (++app_isr_prescaler >= PHZ_APP_ISR_DIVIDER) {
+      app_isr_prescaler = 0;
+      OC::app_switcher.Process(&io_frame);
+    }
+#else
     OC::app_switcher.Process(&io_frame);
+#endif
   }
 
   OC_DEBUG_RESET_CYCLES(OC::CORE::ticks, 16384, OC::DEBUG::ISR_cycles);
@@ -365,30 +414,62 @@ void setup() {
   vbias_m->SetState(VBiasManager::BI);
 #endif
 
-  // use default global config file in LFS
+  // T4 stores Phazerville config in LittleFS. T3 uses EEPROM PageStorage, so
+  // PhzConfig is a no-op there and must not force first-run on every boot.
+#ifdef __IMXRT1062__
   bool firstrun = !PhzConfig::load_config();
+#else
+  bool firstrun = false;
+#endif
 
   // initialize apps
-  OC::app_switcher.Init(reset_settings || firstrun);
+  BOOT_BREADCRUMB("S01 pre init");
+  bool fresh_start = OC::app_switcher.Init(reset_settings || firstrun);
+  BOOT_BREADCRUMB("S02 post init");
 
   // Welcome splash
-  OC::ui.Splashscreen(firstrun, 1);
+  BOOT_BREADCRUMB("S03 pre splash");
+  OC::ui.Splashscreen(fresh_start, 1);
+  BOOT_BREADCRUMB("S04 post splash");
 
   if (start_cal)
     OC::start_calibration();
 
+  BOOT_BREADCRUMB("S05 pre resume");
   OC::app_switcher.current_app()->DispatchAppEvent(OC::APP_EVENT_RESUME);
+  BOOT_BREADCRUMB("S06 post resume");
 
   SERIAL_PRINTLN("[End of setup()]");
+  BOOT_BREADCRUMB("S07 setup done");
 }
 
 /*  ---------    main loop  --------  */
 
 void FASTRUN loop() {
   using namespace OC;
-  CORE::app_isr_enabled = true;
+  BOOT_BREADCRUMB_ONCE(loop_enter, "L01 loop enter");
   CORE::display_update_enabled = true;
+  BOOT_BREADCRUMB_ONCE(display_on, "L02 display on");
   CORE::app_loop_enabled = true;
+  BOOT_BREADCRUMB_ONCE(app_loop_on, "L03 loop on");
+  BOOT_BREADCRUMB_ONCE(before_read_once, "L04a pre read");
+#ifdef PHZ_BOOT_BREADCRUMBS
+  app_switcher.DebugRead(&io_frame);
+#endif
+  BOOT_BREADCRUMB_ONCE(after_read_once, "L04b post read");
+  BOOT_BREADCRUMB_ONCE(before_run_once, "L04c pre run");
+#ifdef PHZ_BOOT_BREADCRUMBS
+  app_switcher.DebugRun(&io_frame);
+#endif
+  BOOT_BREADCRUMB_ONCE(after_run_once, "L04d post run");
+  BOOT_BREADCRUMB_ONCE(before_write_once, "L04e pre write");
+#ifdef PHZ_BOOT_BREADCRUMBS
+  app_switcher.DebugWrite(&io_frame);
+#endif
+  BOOT_BREADCRUMB_ONCE(after_write_once, "L04f post write");
+  BOOT_BREADCRUMB_ONCE(before_app_isr, "L04g pre ISR");
+  CORE::app_isr_enabled = true;
+  BOOT_BREADCRUMB_ONCE(after_app_isr, "L05 post ISR");
   uint32_t menu_draw_count = 0;
   uint32_t last_redraw_time = 0;
 
@@ -399,6 +480,7 @@ void FASTRUN loop() {
 
     // Refresh display
     if (MENU_REDRAW && CORE::display_update_enabled) {
+      BOOT_BREADCRUMB_ONCE(before_draw, "L06 pre draw");
       GRAPHICS_BEGIN_FRAME(false); // Don't busy wait
 
       if (UI_MODE_APP_SETTINGS == ui_mode) {
@@ -422,14 +504,20 @@ void FASTRUN loop() {
       MENU_REDRAW = 0;
       last_redraw_time = ui.ticks();
       GRAPHICS_END_FRAME();
+      BOOT_BREADCRUMB_ONCE(after_draw, "L07 post draw");
     }
 
     // Run current app
-    if (CORE::app_loop_enabled)
+    if (CORE::app_loop_enabled) {
+      BOOT_BREADCRUMB_ONCE(before_loop, "L08 pre app loop");
       app_switcher.current_app()->DispatchLoop();
+      BOOT_BREADCRUMB_ONCE(after_loop, "L09 post app loop");
+    }
 
     // Take care of queued tasks
+    BOOT_BREADCRUMB_ONCE(before_tasks, "L10 pre tasks");
     OC::CORE::FlushTasks();
+    BOOT_BREADCRUMB_ONCE(after_tasks, "L11 post tasks");
 
     // UI events
     if (UI_MODE_APP_SETTINGS == ui_mode) {
@@ -579,5 +667,3 @@ void FASTRUN loop() {
 
   }
 }
-
-

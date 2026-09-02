@@ -132,7 +132,7 @@ static AppContainer<void // this space intentionally left blank
   , AppPong
 #endif
   , AppScaleEditor
-#ifndef NO_HEMISPHERE
+#if !defined(NO_HEMISPHERE) && !defined(NO_WAVEFORM_EDITOR)
   , AppWaveformEditor
 #endif
   , AppBackup

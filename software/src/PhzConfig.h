@@ -37,4 +37,50 @@ namespace PhzConfig {
   void eraseFiles(FS &fs = myfs);
 
 }
+
+#else
+namespace PhzConfig {
+  using KEY = uint16_t;
+  using VALUE = uint64_t;
+
+  const char * const CONFIG_FILENAME = "GLOBALS.CFG";
+
+  inline void Init() {}
+  inline bool load_config(const char* filename = CONFIG_FILENAME) {
+    (void)filename;
+    return false;
+  }
+  inline bool save_config(const char* filename = CONFIG_FILENAME) {
+    (void)filename;
+    return false;
+  }
+  inline void clear_config() {}
+
+  inline void setValue(KEY key, VALUE value) {
+    (void)key;
+    (void)value;
+  }
+  inline bool getValue(KEY key, VALUE &value) {
+    (void)key;
+    (void)value;
+    return false;
+  }
+  inline void deleteKey(KEY key) {
+    (void)key;
+  }
+
+  inline void setData(KEY key, VALUE value) {
+    (void)key;
+    (void)value;
+  }
+  inline bool getData(KEY key, VALUE &value) {
+    (void)key;
+    (void)value;
+    return false;
+  }
+  inline void deleteData(KEY key) {
+    (void)key;
+  }
+}
+
 #endif

@@ -65,7 +65,7 @@ using namespace HS;
 #include "EnvSeq.h"
 #include "EuclidO.h"
 #include "EuclidX.h"
-#ifdef PEWPEWPEW
+#if defined(PEWPEWPEW) && !defined(NO_PEW_GAMEOFLIFE)
 #include "GameOfLife.h"
 #endif
 #include "GateDelay.h"
@@ -83,7 +83,9 @@ using namespace HS;
 #include "Palimpsest.h"
 #include "Pigeons.h"
 #include "PolyDiv.h"
+#ifndef NO_APPLET_PONGLET
 #include "Ponglet.h"
+#endif
 #include "ProbabilityDivider.h"
 #include "ProbabilityMelody.h"
 #include "Relabi.h"
@@ -92,7 +94,9 @@ using namespace HS;
 #include "RunglBook.h"
 #include "ScaleDuet.h"
 #include "Schmitt.h"
+#ifndef NO_APPLET_SCOPE
 #include "Scope.h"
+#endif
 #include "SequenceX.h"
 #include "Seq32.h"
 #include "SeqPlay7.h"
@@ -113,7 +117,9 @@ using namespace HS;
 #include "Trending.h"
 #include "TrigSeq.h"
 #include "TrigSeq16.h"
+#ifndef NO_APPLET_TUNER
 #include "Tuner.h"
+#endif
 #include "VectorEG.h"
 #include "VectorLFO.h"
 #include "VectorMod.h"
@@ -181,7 +187,7 @@ constexpr Registry reg = Registry<HemisphereApplet, HS::APPLET_SLOTS
 #endif
     , DeclareApplet<EuclidO, 83, CAT_SEQUENCER>
     , DeclareApplet<EuclidX, 15, CAT_SEQUENCER>
-#ifdef PEWPEWPEW
+#if defined(PEWPEWPEW) && !defined(NO_PEW_GAMEOFLIFE)
     , DeclareApplet<GameOfLife, 22, CAT_MODULATOR>
 #endif
     , DeclareApplet<GateDelay, 29, CAT_CLOCKING>
@@ -202,7 +208,9 @@ constexpr Registry reg = Registry<HemisphereApplet, HS::APPLET_SLOTS
     , DeclareApplet<Palimpsest, 20, CAT_SEQUENCER>
     , DeclareApplet<Pigeons, 71, CAT_SEQUENCER>
     , DeclareApplet<PolyDiv, 72, CAT_SEQUENCER | CAT_CLOCKING>
+#ifndef NO_APPLET_PONGLET
     , DeclareApplet<Ponglet, 99, CAT_OTHER>
+#endif
     , DeclareApplet<ProbabilityDivider, 59, CAT_CLOCKING>
     , DeclareApplet<ProbabilityMelody, 62, CAT_CLOCKING>
     , DeclareApplet<Relabi, 89, CAT_MODULATOR>
@@ -211,7 +219,9 @@ constexpr Registry reg = Registry<HemisphereApplet, HS::APPLET_SLOTS
     , DeclareApplet<RunglBook, 44, CAT_MODULATOR>
     , DeclareApplet<ScaleDuet, 26, CAT_QUANTIZER>
     , DeclareApplet<Schmitt, 40, CAT_LOGIC>
+#ifndef NO_APPLET_SCOPE
     , DeclareApplet<Scope, 23, CAT_OTHER>
+#endif
     , DeclareApplet<Seq32, 75, CAT_SEQUENCER>
     , DeclareApplet<SeqPlay7, 76, CAT_SEQUENCER>
     , DeclareApplet<SequenceX, 14, CAT_SEQUENCER>
@@ -234,7 +244,9 @@ constexpr Registry reg = Registry<HemisphereApplet, HS::APPLET_SLOTS
     , DeclareApplet<TrigSeq16, 25, CAT_SEQUENCER | CAT_CLOCKING>
     , DeclareApplet<TruthCat3, 85, CAT_LOGIC | CAT_SEQUENCER | CAT_CLOCKING>
     , DeclareApplet<TruthCat4, 84, CAT_LOGIC | CAT_SEQUENCER | CAT_CLOCKING>
+#ifndef NO_APPLET_TUNER
     , DeclareApplet<Tuner, 39, CAT_OTHER>
+#endif
     , DeclareApplet<TwoRings, 18, CAT_SEQUENCER>
     , DeclareApplet<VectorEG, 52, CAT_MODULATOR>
     , DeclareApplet<VectorLFO, 49, CAT_MODULATOR>
