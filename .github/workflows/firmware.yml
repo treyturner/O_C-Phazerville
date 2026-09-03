@@ -62,10 +62,39 @@ jobs:
       uses: actions/cache/restore@v5
       with:
         path: .upstream-release-cache
-        key: upstream-release-${{ steps.source.outputs.ref }}-${{ hashFiles('.github/workflows/firmware.yml') }}
+        key: upstream-release-${{ steps.source.outputs.ref }}
+
+    - name: Check upstream release ancestry
+      id: upstream-release-ancestry
+      if: steps.source.outputs.upstream_release == 'true' && steps.upstream-release-cache.outputs.cache-hit != 'true'
+      run: |
+        git fetch --tags "https://github.com/${UPSTREAM_REPOSITORY}.git" "${{ steps.source.outputs.ref }}"
+
+        if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+          already_in_main=true
+        else
+          already_in_main=false
+        fi
+
+        echo "already_in_main=${already_in_main}" >> "$GITHUB_OUTPUT"
+
+    - name: Decide whether to build
+      id: build-gate
+      run: |
+        should_build=true
+
+        if [[ "${{ steps.upstream-release-cache.outputs.cache-hit }}" == "true" ]]; then
+          should_build=false
+        fi
+
+        if [[ "${{ steps.upstream-release-ancestry.outputs.already_in_main }}" == "true" ]]; then
+          should_build=false
+        fi
+
+        echo "should_build=${should_build}" >> "$GITHUB_OUTPUT"
 
     - name: Parse build request
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: steps.build-gate.outputs.should_build == 'true'
       run: |
         {
           echo "FULL_CUSTOM_BUILD_FLAGS=$(GH_COMMENT="${FULL_BUILD_REQUEST}" python software/res/parse_build_request.py)"
@@ -73,7 +102,7 @@ jobs:
         } >> "$GITHUB_ENV"
 
     - name: Merge upstream source
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true' && steps.source.outputs.ref != ''
+      if: steps.build-gate.outputs.should_build == 'true' && steps.source.outputs.ref != ''
       run: |
         git remote add upstream "https://github.com/${UPSTREAM_REPOSITORY}.git"
         git fetch --tags upstream "${{ steps.source.outputs.ref }}"
@@ -82,7 +111,7 @@ jobs:
         echo "SOURCE_SHORT_SHA=$(git rev-parse --short FETCH_HEAD)" >> "$GITHUB_ENV"
 
     - name: Setup build metadata
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: steps.build-gate.outputs.should_build == 'true'
       run: |
         upstream_version="$(tail -n 1 software/src/OC_version.h | tr -d '"')"
         release_version="${upstream_version}+build.${GITHUB_RUN_NUMBER}"
@@ -96,27 +125,27 @@ jobs:
         } >> "$GITHUB_ENV"
 
     - name: Cache PlatformIO
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: steps.build-gate.outputs.should_build == 'true'
       uses: actions/cache@v5
       with:
         path: ~/.platformio
         key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
 
     - name: Set up Python
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: steps.build-gate.outputs.should_build == 'true'
       uses: actions/setup-python@v6
       with:
         python-version: '3.11'
         cache: 'pip'
         cache-dependency-path: '**/requirements.txt'
 
-    - if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+    - if: steps.build-gate.outputs.should_build == 'true'
       run: |
         pip3 install --upgrade pip
         pip3 install -r .github/workflows/requirements.txt
 
     - name: Build firmware
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: steps.build-gate.outputs.should_build == 'true'
       working-directory: software
       run: |
         mkdir -p ../artifacts
@@ -159,7 +188,7 @@ jobs:
           "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
 
     - name: Upload artifact
-      if: steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: steps.build-gate.outputs.should_build == 'true'
       uses: actions/upload-artifact@v7
       with:
         name: o_C-${{env.OC_ARTIFACT_TAG}}
@@ -167,7 +196,7 @@ jobs:
         path: artifacts/*.hex
 
     - name: Publish release
-      if: github.ref == 'refs/heads/main' && steps.upstream-release-cache.outputs.cache-hit != 'true'
+      if: github.ref == 'refs/heads/main' && steps.build-gate.outputs.should_build == 'true'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
@@ -198,4 +227,4 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: .upstream-release-cache
-        key: upstream-release-${{ steps.source.outputs.ref }}-${{ hashFiles('.github/workflows/firmware.yml') }}
+        key: upstream-release-${{ steps.source.outputs.ref }}
