@@ -91,20 +91,21 @@ struct Registry {
     }
 
     T* get(RegID id, size_t slot = 0) const {
-        int idx = -1;
-        auto Ids = getIds();
+        static constexpr std::array<RegID, Size> Ids = getIds();
         for (size_t i = 0; i < Size; ++i) {
-          if (id == Ids[i]) {
-            idx = i;
-            break;
-          }
+          if (id == Ids[i]) return get_by_index(i, slot);
         }
-        if (idx < 0 || !factories[idx]) {
+        return nullptr;
+    }
+
+    // Called on every core ISR tick, so no ID lookup here.
+    T* get_by_index(size_t idx, size_t slot = 0) const {
+        if (idx >= Size || !factories[idx]) {
             return nullptr;
         }
         if (!instances[slot][idx]) {
             Serial.printf("Free RAM: %d\n", OC::CORE::FreeRam());
-            Serial.printf("AppletRegistry: new - ID: %u Index: %d Slot: %u\n", id, idx, slot);
+            Serial.printf("AppletRegistry: new - Index: %u Slot: %u\n", idx, slot);
             instances[slot][idx] = factories[idx]();
             if (instances[slot][idx]) {
                 Serial.println(instances[slot][idx]->applet_name());

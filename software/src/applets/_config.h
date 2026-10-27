@@ -280,7 +280,7 @@ namespace HS {
   }
 
   HemisphereApplet * get_applet(const int index, HEM_SIDE slot = LEFT_HEMISPHERE) {
-    return reg.get(appletIds[index], slot);
+    return reg.get_by_index(index, slot);
   }
 
   const char * get_applet_name(const int index) {

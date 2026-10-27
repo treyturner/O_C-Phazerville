@@ -738,15 +738,15 @@ public:
         // execute Applets
         for (int h = 0; h < 2; h++)
         {
-            int index = my_applet[h];
+            HemisphereApplet *applet = HS::get_applet(my_applet[h], h);
 
             if (HS::clock_m.auto_reset)
-                HS::get_applet(index, h)->Reset();
+                applet->Reset();
 
 #ifdef PHZ_BOOT_BREADCRUMBS
-            PhzProfile::applet_names[h] = HS::get_applet(index, h)->applet_name();
+            PhzProfile::applet_names[h] = applet->applet_name();
 #endif
-            PHZ_PROFILE(PhzProfile::APPLET_L + h, HS::get_applet(index, h)->Controller());
+            PHZ_PROFILE(PhzProfile::APPLET_L + h, applet->Controller());
         }
         HS::clock_m.auto_reset = false;
 
