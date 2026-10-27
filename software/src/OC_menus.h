@@ -122,7 +122,9 @@ public:
   }
 
   inline int last_visible() const {
-    return cursor_pos_ - screen_line_ + screen_lines - 1;
+    // a list shorter than the screen ends before the last line
+    const int last = cursor_pos_ - screen_line_ + screen_lines - 1;
+    return last < end_ ? last : end_;
   }
 
   inline bool editing() const {
