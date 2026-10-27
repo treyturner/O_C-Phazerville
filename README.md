@@ -70,6 +70,29 @@ Or use `T40` for Teensy 4.0. Have a look inside `platformio.ini` for alternative
 
 _**Pro-tip**_: If you decide to fork the project, and enable GitHub Actions on your own repo, GitHub will build the files for you... ;)
 
+### Custom T32 builds in this fork
+
+This fork tracks upstream's `T32` branch and builds four Teensy 3.2 firmwares with `software/build_custom_pair.sh` and `.github/workflows/firmware.yml`. CI builds on every push to `main` and publishes a versioned release. A daily check merges and builds new commits from upstream `T32`.
+
+Full Hemisphere uses every applet bundle, drops the Wave-Edit app, and keeps 8 presets. It needs LTO to fit:
+```
+APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, MOAR_PRESETS, LTO
+```
+
+Lean Hemisphere uses upstream's curated applet set plus Captain MIDI and Automatonnetz:
+```
+PEWPEWPEW, MIDI, AUTOMATONNETZ
+```
+
+| Build | Target | RAM | Flash | Flash left |
+| --- | --- | ---: | ---: | ---: |
+| Full Hemisphere | T32 | 42,116 / 65,536 bytes | 256,276 / 262,144 bytes | 5,868 bytes |
+| Full Hemisphere | T32 VOR | 42,224 / 65,536 bytes | 259,028 / 262,144 bytes | 3,116 bytes |
+| Lean Hemisphere | T32 | 37,372 / 65,536 bytes | 208,552 / 262,144 bytes | 53,592 bytes |
+| Lean Hemisphere | T32 VOR | 37,428 / 65,536 bytes | 210,840 / 262,144 bytes | 51,304 bytes |
+
+T32 allocates every registered applet statically, so applets cost RAM whether or not they are loaded.
+
 ### Option 2: Arduino IDE
 Instead of Platform IO, you can use the latest version of the Arduino IDE + Teensyduino extension. The newer 2.x series should work, no need to install an old version.
 
