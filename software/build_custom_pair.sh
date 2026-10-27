@@ -2,7 +2,10 @@
 set -euo pipefail
 
 FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+NOWAVE,+NOPONGLET,+NOTUNER,+NOENVSEQ,+NOFROGSEQ'
-T32_EXTRA_BUILD_FLAGS='-DNO_DISPLAY_DMA'
+# Experiments can override these, e.g.
+#   T32_EXTRA_BUILD_FLAGS='-DNO_DISPLAY_DMA -DPHZ_DISPLAY_CHUNKED' VARIANT=chunked ./build_custom_pair.sh
+T32_EXTRA_BUILD_FLAGS="${T32_EXTRA_BUILD_FLAGS:--DNO_DISPLAY_DMA}"
+VARIANT="${VARIANT:+_${VARIANT}}"
 FULL_VOR_EXTRA_BUILD_FLAGS='-DNO_APPLET_SCOPE'
 LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+MIDI,+AUTOMATONNETZ,+NOENVSEQ,+NOPIQUET,+NOFROGSEQ'
 
@@ -45,30 +48,30 @@ build_firmware() {
 build_firmware \
   "full Hemisphere T32 custom firmware" \
   "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
-  "T32_pewpewpew" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_pewpewpew-${SOURCE_SHORT_SHA}.hex"
+  "T32_pewpewpew${VARIANT}" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_pewpewpew${VARIANT}-${SOURCE_SHORT_SHA}.hex"
 
 build_firmware \
   "full Hemisphere VOR T32 custom firmware" \
   "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} ${FULL_VOR_EXTRA_BUILD_FLAGS} -DVOR" \
-  "T32_VOR_pewpewpew" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_pewpewpew-${SOURCE_SHORT_SHA}.hex"
+  "T32_VOR_pewpewpew${VARIANT}" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_pewpewpew${VARIANT}-${SOURCE_SHORT_SHA}.hex"
 
 build_firmware \
   "lean Hemisphere T32 custom firmware" \
   "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
-  "T32_lean" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_lean-${SOURCE_SHORT_SHA}.hex"
+  "T32_lean${VARIANT}" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex"
 
 build_firmware \
   "lean Hemisphere VOR T32 custom firmware" \
   "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
-  "T32_VOR_lean" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
+  "T32_VOR_lean${VARIANT}" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex"
 
 echo "Built artifacts:"
 ls -lh \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_pewpewpew-${SOURCE_SHORT_SHA}.hex" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_pewpewpew-${SOURCE_SHORT_SHA}.hex" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_lean-${SOURCE_SHORT_SHA}.hex" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_pewpewpew${VARIANT}-${SOURCE_SHORT_SHA}.hex" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_pewpewpew${VARIANT}-${SOURCE_SHORT_SHA}.hex" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex" \
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex"

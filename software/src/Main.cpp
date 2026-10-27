@@ -48,7 +48,7 @@
 
 #include "PhzConfig.h"
 
-#if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA) && !defined(PHZ_APP_ISR_DIVIDER)
+#if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA) && !defined(PHZ_DISPLAY_CHUNKED) && !defined(PHZ_APP_ISR_DIVIDER)
 #define PHZ_APP_ISR_DIVIDER 8
 #endif
 
@@ -157,7 +157,7 @@ void FASTRUN CORE_timer_ISR() {
   // a DMA transfer to the display things are fairly nicely interleaved. In the
   // next ISR, the display transfer is finalized (CS update).
 
-#if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA)
+#if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA) && !defined(PHZ_DISPLAY_CHUNKED)
   DAC::Update();
   static uint8_t display_update_prescaler = 0;
   if (++display_update_prescaler >= 8) {
