@@ -34,6 +34,7 @@ using simfloat = int32_t;
 #endif
 
 #include "icons.h"
+#include "PhzProfile.h"
 #include "HSClockManager.h"
 #include "HemisphereApplet.h"
 #include "HSUtils.h"
@@ -73,7 +74,7 @@ public:
 
     void BaseController(OC::IOFrame *ioframe) {
         // Load the IO frame from CV inputs
-        HS::frame.Load(ioframe);
+        PHZ_PROFILE(PhzProfile::LOAD, HS::frame.Load(ioframe));
 
         // Cursor countdowns. See CursorBlink(), ResetCursor(), gfxCursor()
         if (--cursor_countdown < -HSAPPLICATION_CURSOR_TICKS) cursor_countdown = HSAPPLICATION_CURSOR_TICKS;
@@ -81,7 +82,7 @@ public:
         Controller();
 
         // set outputs from IO frame
-        HS::frame.Send(ioframe);
+        PHZ_PROFILE(PhzProfile::SEND, HS::frame.Send(ioframe));
     }
 
     void BaseStart() {

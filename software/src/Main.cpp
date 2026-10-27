@@ -47,6 +47,7 @@
 #include "HSMIDI.h"
 
 #include "PhzConfig.h"
+#include "PhzProfile.h"
 
 #if defined(__MK20DX256__) && defined(NO_DISPLAY_DMA) && !defined(PHZ_DISPLAY_CHUNKED) && !defined(PHZ_APP_ISR_DIVIDER)
 #define PHZ_APP_ISR_DIVIDER 8
@@ -125,6 +126,74 @@ static void BootBreadcrumb(const char *label) {
   }
   GRAPHICS_END_FRAME();
   delay(250);
+}
+
+uint32_t PhzProfile::cycles[PhzProfile::STAGE_COUNT];
+const char *PhzProfile::applet_names[2];
+
+// Average one profiled value over the runs, in tenths of a microsecond.
+static void PrintProfile(const char *label, uint32_t sum, uint32_t runs) {
+  const uint32_t tenths = sum * 10 / runs / (F_CPU / 1000000);
+  graphics.printf("%s%lu.%lu ", label, tenths / 10, tenths % 10);
+}
+
+// Run the app back-to-back with interrupts off, then show where its time goes.
+// Holds the screen until a button is pressed (or 60s).
+FLASHMEM
+static void BootProfile() {
+  static constexpr uint32_t kRuns = 64;
+  uint32_t read = 0, run = 0, write = 0, run_max = 0;
+  memset(PhzProfile::cycles, 0, sizeof(PhzProfile::cycles));
+
+  noInterrupts();
+  for (uint32_t i = 0; i < kRuns; ++i) {
+    const uint32_t t0 = ARM_DWT_CYCCNT;
+    OC::app_switcher.DebugRead(&io_frame);
+    const uint32_t t1 = ARM_DWT_CYCCNT;
+    OC::app_switcher.DebugRun(&io_frame);
+    const uint32_t t2 = ARM_DWT_CYCCNT;
+    OC::app_switcher.DebugWrite(&io_frame);
+    const uint32_t t3 = ARM_DWT_CYCCNT;
+    read += t1 - t0;
+    run += t2 - t1;
+    write += t3 - t2;
+    if (t2 - t1 > run_max) run_max = t2 - t1;
+  }
+  interrupts();
+
+  using namespace PhzProfile;
+  GRAPHICS_BEGIN_FRAME(true);
+  graphics.setPrintPos(0, 0);
+  graphics.print("PROFILE x64 avg us");
+  graphics.setPrintPos(0, 8);
+  PrintProfile("run ", run, kRuns);
+  PrintProfile("max ", run_max, 1);
+  graphics.setPrintPos(0, 16);
+  PrintProfile("rd ", read, kRuns);
+  PrintProfile("wr ", write, kRuns);
+  PrintProfile("sd ", cycles[SEND], kRuns);
+  graphics.setPrintPos(0, 24);
+  PrintProfile("ld ", cycles[LOAD], kRuns);
+  PrintProfile("ck ", cycles[CLOCK], kRuns);
+  PrintProfile("tr ", cycles[TRIGS], kRuns);
+  graphics.setPrintPos(0, 32);
+  PrintProfile("L ", cycles[APPLET_L], kRuns);
+  if (applet_names[0]) graphics.print(applet_names[0]);
+  graphics.setPrintPos(0, 40);
+  PrintProfile("R ", cycles[APPLET_R], kRuns);
+  if (applet_names[1]) graphics.print(applet_names[1]);
+  graphics.setPrintPos(0, 48);
+  PrintProfile("cur ", cycles[CURSORS], kRuns);
+  graphics.setPrintPos(0, 56);
+  graphics.print("press a button");
+  GRAPHICS_END_FRAME();
+
+  const uint32_t start = millis();
+  while (millis() - start < 60000) {
+    if (OC::ui.read_immediate(OC::CONTROL_BUTTON_L) || OC::ui.read_immediate(OC::CONTROL_BUTTON_R) ||
+        OC::ui.read_immediate(OC::CONTROL_BUTTON_UP) || OC::ui.read_immediate(OC::CONTROL_BUTTON_DOWN))
+      break;
+  }
 }
 
 #define BOOT_BREADCRUMB(label) BootBreadcrumb(label)
@@ -848,6 +917,9 @@ FLASHMEM __attribute__((noinline)) void loop() {
   app_switcher.DebugWrite(&io_frame);
 #endif
   BOOT_BREADCRUMB_ONCE(after_write_once, "L04f post write");
+#ifdef PHZ_BOOT_BREADCRUMBS
+  BootProfile();
+#endif
   BOOT_BREADCRUMB_ONCE(before_app_isr, "L04g pre ISR");
   CORE::app_isr_enabled = true;
   BOOT_BREADCRUMB_ONCE(after_app_isr, "L05 post ISR");

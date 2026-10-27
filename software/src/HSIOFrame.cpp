@@ -2,6 +2,7 @@
 #include "HSMIDI.h"
 #include "HSUtils.h"
 #include "HSIOFrame.h"
+#include "PhzProfile.h"
 
 #ifdef ARDUINO_TEENSY41
 void MidiLog::Push(bool out, uint8_t message, uint8_t channel, uint8_t d1, uint8_t d2) {
@@ -477,9 +478,10 @@ void HS::IOFrame::Load(OC::IOFrame *ioframe) {
     }
 #endif
 
-    ProcessClock();
+    PHZ_PROFILE(PhzProfile::CLOCK, ProcessClock());
 
     // pre-calculate clock triggers
+    PHZ_PROFILE(PhzProfile::TRIGS,
     for (int ch = 0; ch < APPLET_SLOTS * 2; ++ch) {
       bool result = 0;
       const size_t virt_chan = (ch) % (APPLET_SLOTS * 2);
@@ -503,6 +505,7 @@ void HS::IOFrame::Load(OC::IOFrame *ioframe) {
 
       clocked[ch] = result;
     }
+    );
 }
 
 void HS::IOFrame::Send(OC::IOFrame *ioframe) {

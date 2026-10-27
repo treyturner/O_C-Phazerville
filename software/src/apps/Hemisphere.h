@@ -743,11 +743,14 @@ public:
             if (HS::clock_m.auto_reset)
                 HS::get_applet(index, h)->Reset();
 
-            HS::get_applet(index, h)->Controller();
+#ifdef PHZ_BOOT_BREADCRUMBS
+            PhzProfile::applet_names[h] = HS::get_applet(index, h)->applet_name();
+#endif
+            PHZ_PROFILE(PhzProfile::APPLET_L + h, HS::get_applet(index, h)->Controller());
         }
         HS::clock_m.auto_reset = false;
 
-        HemisphereApplet::ProcessCursors();
+        PHZ_PROFILE(PhzProfile::CURSORS, HemisphereApplet::ProcessCursors());
     }
 
     void DrawFullScreen() const {
