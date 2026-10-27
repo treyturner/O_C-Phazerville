@@ -26,38 +26,7 @@ struct ClkDivMult {
   void Adjust(int dir) {
     Set(steps - dir); // reversed direction
   }
-  bool Tick(bool clocked = 0) {
-    if (steps == 0) return false;
-    bool trigout = 0;
-    const uint32_t this_tick = HS::get_tick();
-
-    if (clocked) {
-      cycle_time = this_tick - last_clock;
-      last_clock = this_tick;
-
-      if (steps > 0) { // Positive value indicates clock division
-          clock_count++;
-          if (clock_count == 1) trigout = 1; // fire on first step
-          if (clock_count >= steps) clock_count = 0; // Reset on last step
-      }
-      if (steps < 0) {
-          // Calculate next clock for multiplication on each clock
-          clock_count = 0;
-          next_clock = this_tick + get_tick_interval();
-          trigout = 1;
-      }
-    }
-
-    // Handle clock multiplication
-    if (steps < 0 && next_clock > 0) {
-        if ( this_tick >= next_clock && clock_count+1 < -steps) {
-            ++clock_count;
-            next_clock += get_tick_interval();
-            trigout = 1;
-        }
-    }
-    return trigout;
-  }
+  bool Tick(bool clocked = 0);
   void Reset() {
     clock_count = 0;
     next_clock = 0;

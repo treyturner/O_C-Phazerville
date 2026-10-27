@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "../PhzFastrun.h"
+
 using HS::clock_m;
 
 class ClockSetup : public HemisphereApplet {
@@ -67,82 +69,7 @@ public:
     }
 
     // The ClockSetup controller handles MIDI Clock and Transport Start/Stop
-    void Controller() {
-        bool midi_sync = false;
-        bool clock_sync = sync_trig.Clock();
-
-        hemisphere = HS::CLOCK_CURSOR;
-
-        // simple Play<->Stop for the trigger mapping
-        if (play_trig.Clock()) {
-          if (HS::clock_m.IsRunning()) {
-            HS::clock_m.Stop();
-          } else {
-            HS::clock_m.Start();
-          }
-          PokePopup(CLOCK_POPUP);
-        }
-
-        // MIDI Clock is filtered to 2 PPQN
-        if (frame.MIDIState.clock_q) {
-            frame.MIDIState.clock_q = 0;
-            clock_sync = 1;
-            midi_sync = 1;
-            clock_m.DisableMIDIOut();
-        }
-        if (frame.MIDIState.start_q) {
-            frame.MIDIState.start_q = 0;
-            clock_m.DisableMIDIOut();
-            clock_m.Start();
-            OC::ui.Poke();
-            HS::PokePopup(HS::CLOCK_POPUP);
-        }
-        if (frame.MIDIState.stop_q) {
-            frame.MIDIState.stop_q = 0;
-            clock_m.Stop();
-            clock_m.EnableMIDIOut();
-            HS::PokePopup(HS::CLOCK_POPUP);
-        }
-
-        // Paused means wait for clock-sync to start
-        if (clock_m.IsPaused() && clock_sync) {
-            clock_m.Start();
-            OC::ui.Poke();
-            HS::PokePopup(HS::CLOCK_POPUP);
-        }
-
-        // Advance internal clock, sync to external clock / reset
-        if (clock_m.IsRunning())
-            clock_m.SyncTrig( clock_sync, midi_sync );
-
-        // ------------ //
-        if (clock_m.IsRunning() && clock_m.MIDITock()) {
-          OC::CORE::DeferTask([](){
-            usbMIDI.sendRealTime(usbMIDI.Clock);
-          });
-        }
-
-        // 4 internal clock flashers
-        /*
-        for (int i = 0; i < 4; ++i) {
-            if (clock_m.Tock(i))
-                flash_ticker[i] = HEMISPHERE_PULSE_ANIMATION_TIME;
-            else if (flash_ticker[i])
-                --flash_ticker[i];
-        }
-        */
-
-        // Virtual outputs: #E, #F, #G, and #H
-        if (HS::clock_m.Tock(HS::ClockManager::ONE_BEAT_CLOCK))
-          ClockOut(0); // 1x pulse
-        if (HS::clock_m.Tock(HS::ClockManager::SIXTEENTH_CLOCK))
-          ClockOut(1); // 4x pulse
-        GateOut(2, HS::clock_m.IsRunning()); // RUN
-        GateOut(3, !HS::clock_m.IsRunning()); // RESET
-
-        if (button_ticker) --button_ticker;
-        if (slide_anim) --slide_anim;
-    }
+    void Controller();
 
     void DrawIndicator() {
       // Clock indicator icons overlay
@@ -561,3 +488,80 @@ private:
         }
     }
 };
+
+PHZ_HOT(ClockSetup_Controller) void ClockSetup::Controller() {
+    bool midi_sync = false;
+    bool clock_sync = sync_trig.Clock();
+
+    hemisphere = HS::CLOCK_CURSOR;
+
+    // simple Play<->Stop for the trigger mapping
+    if (play_trig.Clock()) {
+      if (HS::clock_m.IsRunning()) {
+        HS::clock_m.Stop();
+      } else {
+        HS::clock_m.Start();
+      }
+      PokePopup(CLOCK_POPUP);
+    }
+
+    // MIDI Clock is filtered to 2 PPQN
+    if (frame.MIDIState.clock_q) {
+        frame.MIDIState.clock_q = 0;
+        clock_sync = 1;
+        midi_sync = 1;
+        clock_m.DisableMIDIOut();
+    }
+    if (frame.MIDIState.start_q) {
+        frame.MIDIState.start_q = 0;
+        clock_m.DisableMIDIOut();
+        clock_m.Start();
+        OC::ui.Poke();
+        HS::PokePopup(HS::CLOCK_POPUP);
+    }
+    if (frame.MIDIState.stop_q) {
+        frame.MIDIState.stop_q = 0;
+        clock_m.Stop();
+        clock_m.EnableMIDIOut();
+        HS::PokePopup(HS::CLOCK_POPUP);
+    }
+
+    // Paused means wait for clock-sync to start
+    if (clock_m.IsPaused() && clock_sync) {
+        clock_m.Start();
+        OC::ui.Poke();
+        HS::PokePopup(HS::CLOCK_POPUP);
+    }
+
+    // Advance internal clock, sync to external clock / reset
+    if (clock_m.IsRunning())
+        clock_m.SyncTrig( clock_sync, midi_sync );
+
+    // ------------ //
+    if (clock_m.IsRunning() && clock_m.MIDITock()) {
+      OC::CORE::DeferTask([](){
+        usbMIDI.sendRealTime(usbMIDI.Clock);
+      });
+    }
+
+    // 4 internal clock flashers
+    /*
+    for (int i = 0; i < 4; ++i) {
+        if (clock_m.Tock(i))
+            flash_ticker[i] = HEMISPHERE_PULSE_ANIMATION_TIME;
+        else if (flash_ticker[i])
+            --flash_ticker[i];
+    }
+    */
+
+    // Virtual outputs: #E, #F, #G, and #H
+    if (HS::clock_m.Tock(HS::ClockManager::ONE_BEAT_CLOCK))
+      ClockOut(0); // 1x pulse
+    if (HS::clock_m.Tock(HS::ClockManager::SIXTEENTH_CLOCK))
+      ClockOut(1); // 4x pulse
+    GateOut(2, HS::clock_m.IsRunning()); // RUN
+    GateOut(3, !HS::clock_m.IsRunning()); // RESET
+
+    if (button_ticker) --button_ticker;
+    if (slide_anim) --slide_anim;
+}

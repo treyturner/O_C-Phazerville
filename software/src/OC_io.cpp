@@ -29,6 +29,7 @@
 #include "OC_scales.h"
 #include "OC_cv_utils.h"
 #include "OC_pitch_utils.h"
+#include "PhzFastrun.h"
 
 namespace OC {
 
@@ -51,7 +52,7 @@ void InputDesc::set_printf(const char *fmt, ...)
   va_end(args);
 }
 
-/*static*/ void IO::Read(IOFrame *ioframe, const IOSettings *io_settings)
+/*static*/ PHZ_HOT(IO_Read) void IO::Read(IOFrame *ioframe, const IOSettings *io_settings)
 {
   const ADC_CHANNEL chan[ADC_CHANNEL_COUNT] = {
     ADC_CHANNEL_1, ADC_CHANNEL_2, ADC_CHANNEL_3, ADC_CHANNEL_4,
@@ -88,7 +89,7 @@ void InputDesc::set_printf(const char *fmt, ...)
   ioframe->micros = micros();
 }
 
-/*static*/ void IO::Write(IOFrame *ioframe, const IOSettings *io_settings) 
+/*static*/ PHZ_HOT(IO_Write) void IO::Write(IOFrame *ioframe, const IOSettings *io_settings)
 {
   const DAC_CHANNEL chan[DAC_CHANNEL_COUNT] = {
     DAC_CHANNEL_A, DAC_CHANNEL_B, DAC_CHANNEL_C, DAC_CHANNEL_D,

@@ -3,6 +3,7 @@
 #include "HSUtils.h"
 #include "HSIOFrame.h"
 #include "PhzProfile.h"
+#include "PhzFastrun.h"
 
 #ifdef ARDUINO_TEENSY41
 void MidiLog::Push(bool out, uint8_t message, uint8_t channel, uint8_t d1, uint8_t d2) {
@@ -427,7 +428,187 @@ void HS::MIDIFrame::Send(const SlewedValue *outvals) {
     //usbMIDI.send_now();
 }
 
-void HS::IOFrame::Load(OC::IOFrame *ioframe) {
+PHZ_HOT(DigitalInputMap_Gate) bool HS::DigitalInputMap::Gate() const {
+  switch (source_type()) {
+    case TYPE_INTERNAL:
+      // Formerly hardcoded clock sources.
+      // Now, the ClockSetup applet provides virtual outputs I/J/K/L
+      return frame.ViewOut(DAC_CHANNEL_COUNT + index()) > GATE_THRESHOLD;
+
+    case TYPE_DIGITAL_INPUT:
+      return frame.gate_high[index()];
+    case TYPE_ADC:
+      return frame.gate_high[DIGITAL_INPUT_COUNT + index()];
+      // gate_high is already calculated for ADC
+      //return frame.inputs[index()] > GATE_THRESHOLD;
+    case TYPE_DAC:
+      return frame.ViewOut(index()) > GATE_THRESHOLD;
+    case TYPE_MIDI_MAP:
+      return frame.MIDIState.mapping[index()].ViewOut() > GATE_THRESHOLD;
+#ifdef USB_GAMEPAD
+    case TYPE_HID_MAP:
+      return frame.GamepadState.mapping[index()].output > GATE_THRESHOLD;
+#endif
+    case TYPE_NONE:
+    default:
+      return false;
+  }
+}
+
+PHZ_HOT(DigitalInputMap_Clock) bool HS::DigitalInputMap::Clock() {
+  if (clock_m.auto_reset) Reset();
+  bool gate = Gate();
+  bool tock = !last_gate_state && gate;
+  last_gate_state = gate;
+
+  tock = div_mult.Tick(tock);
+
+  // process trigger filters here - Euclidean, etc
+  if (tock) {
+    if (e_length > 0)
+      tock = EuclideanFilter(e_length + 1, e_beats, e_rotate, clkcount);
+    ++clkcount;
+  }
+
+  return tock;
+}
+
+PHZ_HOT(ClkDivMult_Tick) bool ClkDivMult::Tick(bool clocked) {
+  if (steps == 0) return false;
+  bool trigout = 0;
+  const uint32_t this_tick = HS::get_tick();
+
+  if (clocked) {
+    cycle_time = this_tick - last_clock;
+    last_clock = this_tick;
+
+    if (steps > 0) { // Positive value indicates clock division
+        clock_count++;
+        if (clock_count == 1) trigout = 1; // fire on first step
+        if (clock_count >= steps) clock_count = 0; // Reset on last step
+    }
+    if (steps < 0) {
+        // Calculate next clock for multiplication on each clock
+        clock_count = 0;
+        next_clock = this_tick + get_tick_interval();
+        trigout = 1;
+    }
+  }
+
+  // Handle clock multiplication
+  if (steps < 0 && next_clock > 0) {
+      if ( this_tick >= next_clock && clock_count+1 < -steps) {
+          ++clock_count;
+          next_clock += get_tick_interval();
+          trigout = 1;
+      }
+  }
+  return trigout;
+}
+
+PHZ_HOT(ClockManager_SyncTrig) void HS::ClockManager::SyncTrig(bool clocked, bool midi_sync) {
+    const uint32_t now = micros() / 60; // HS::get_tick();
+    if (midi_sync) DisableMIDIOut();
+    const int ppqn = (midi_sync || !midi_out_enabled) ? MIDI_CLOCK_PPQN : clock_ppqn;
+
+    // don't sync to non-MIDI triggers if MIDI sync is active
+    if (!midi_sync && !midi_out_enabled) clocked = false;
+
+    // Reset only when all multipliers have been met
+    bool reset = 1;
+    // Process beat sync actions when any multiplier is met
+    bool beatsync = 0;
+
+    // count and calculate Tocks
+    for (int ch = 0; ch < NR_OF_CLOCKS; ch++) {
+        if (tocks_per_beat[ch] == 0) { // disabled
+            tock[ch] = 0; continue;
+        }
+
+        if (tocks_per_beat[ch] > 0) { // multiply
+            uint32_t next_tock_tick = BeatTick() + count[ch]*ticks_per_beat / static_cast<uint32_t>(tocks_per_beat[ch]);
+            if (shuffle && MIDI_CLOCK != ch && count[ch] % 2 == 1 && count[ch] < tocks_per_beat[ch])
+                next_tock_tick += shuffle * ticks_per_beat / 100 / static_cast<uint32_t>(tocks_per_beat[ch]);
+
+            tock[ch] = now >= next_tock_tick;
+            if (tock[ch]) {
+              ++count[ch]; // increment multiplier counter
+              if (1 == count[ch]) beatsync = 1;
+            }
+
+            beatsync = beatsync || (count[ch] > tocks_per_beat[ch]); // multiplier has been exceeded
+            reset = reset && (count[ch] > tocks_per_beat[ch]);
+        } else { // division: -1 becomes /2, -2 becomes /3, etc.
+            int div = 1 - tocks_per_beat[ch];
+            uint32_t next_beat = BeatTick() + (count[ch] ? ticks_per_beat : 0);
+            bool beat_exceeded = (now >= next_beat);
+            if (beat_exceeded) {
+                ++count[ch];
+                tock[ch] = (count[ch] % div) == 1;
+            }
+            else
+                tock[ch] = 0;
+
+            // resync on every beat
+            beatsync = beatsync || beat_exceeded;
+            reset = reset && beat_exceeded;
+            if (tock[ch]) count[ch] = 1;
+        }
+
+    }
+    if (reset) Reset(1); // skip the one we're already on
+    if (beatsync && !syncfn_queue.empty())
+      ProcessBeatSync();
+
+    // handle syncing to physical clocks
+    if (clocked && clock_tick[tickno] && ppqn) {
+
+        uint32_t clock_diff = now - clock_tick[tickno];
+
+        // too slow, reset clock tracking
+        if (ppqn * clock_diff > CLOCK_TICKS_MAX) {
+            clock_tick[0] = 0;
+            clock_tick[1] = 0;
+        }
+
+        // if there are two previous clock ticks, update tempo and sync
+        if (clock_tick[1-tickno] && clock_diff) {
+            uint32_t avg_diff = (clock_diff + (clock_tick[tickno] - clock_tick[1-tickno])) / 2;
+
+            // update the tempo
+            ticks_per_beat = constrain(ppqn * avg_diff, CLOCK_TICKS_MIN, CLOCK_TICKS_MAX);
+            tempo_setting = tempo = 1000000 / ticks_per_beat; // imprecise, for display purposes
+
+            int ticks_per_clock = ticks_per_beat / ppqn; // rounded down
+
+            // time since last beat
+            int tick_offset = now - BeatTick();
+
+            // too long ago? time til next beat
+            if (tick_offset > ticks_per_clock / 2) tick_offset -= ticks_per_beat;
+
+            // within half a clock pulse of the nearest beat AND significantly large
+            if (abs(tick_offset) < ticks_per_clock / 2 && abs(tick_offset) > 4)
+                Nudge(tick_offset); // nudge the beat towards us
+
+            extsync = true;
+        }
+    }
+    // clock has been physically ticked
+    if (clocked) {
+        tickno = 1 - tickno;
+        clock_tick[tickno] = now;
+    } else if (auto_stop) {
+      if (extsync && ppqn
+          && now - clock_tick[tickno] > ticks_per_beat * 2 / ppqn) {
+        // auto-stop
+        Stop();
+        Start(true); // re-arm
+      }
+    }
+}
+
+PHZ_HOT(IOFrame_Load) void HS::IOFrame::Load(OC::IOFrame *ioframe) {
     current_ioframe = ioframe; // cache that ish
 
     // hardcoded to the enum...
@@ -508,7 +689,7 @@ void HS::IOFrame::Load(OC::IOFrame *ioframe) {
     );
 }
 
-void HS::IOFrame::Send(OC::IOFrame *ioframe) {
+PHZ_HOT(IOFrame_Send) void HS::IOFrame::Send(OC::IOFrame *ioframe) {
     for (int i = 0; i < IO_CHANNEL_COUNT; ++i) {
       /*
        * envelope output!

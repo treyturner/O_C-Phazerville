@@ -373,54 +373,13 @@ public:
     Reset(true);
   }
 
-  bool Gate() const {
-    switch (source_type()) {
-      case TYPE_INTERNAL:
-        // Formerly hardcoded clock sources.
-        // Now, the ClockSetup applet provides virtual outputs I/J/K/L
-        return frame.ViewOut(DAC_CHANNEL_COUNT + index()) > GATE_THRESHOLD;
-
-      case TYPE_DIGITAL_INPUT:
-        return frame.gate_high[index()];
-      case TYPE_ADC:
-        return frame.gate_high[DIGITAL_INPUT_COUNT + index()];
-        // gate_high is already calculated for ADC
-        //return frame.inputs[index()] > GATE_THRESHOLD;
-      case TYPE_DAC:
-        return frame.ViewOut(index()) > GATE_THRESHOLD;
-      case TYPE_MIDI_MAP:
-        return frame.MIDIState.mapping[index()].ViewOut() > GATE_THRESHOLD;
-#ifdef USB_GAMEPAD
-      case TYPE_HID_MAP:
-        return frame.GamepadState.mapping[index()].output > GATE_THRESHOLD;
-#endif
-      case TYPE_NONE:
-      default:
-        return false;
-    }
-  }
+  bool Gate() const;
 
   /**
    * Returns true on rising gate input. Will return true once and then go back
    * to false until the gate goes low again.
    **/
-  bool Clock() {
-    if (clock_m.auto_reset) Reset();
-    bool gate = Gate();
-    bool tock = !last_gate_state && gate;
-    last_gate_state = gate;
-
-    tock = div_mult.Tick(tock);
-
-    // process trigger filters here - Euclidean, etc
-    if (tock) {
-      if (e_length > 0)
-        tock = EuclideanFilter(e_length + 1, e_beats, e_rotate, clkcount);
-      ++clkcount;
-    }
-
-    return tock;
-  }
+  bool Clock();
 
   uint8_t const* Icon() const {
     switch (source_type()) {

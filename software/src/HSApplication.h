@@ -35,6 +35,7 @@ using simfloat = int32_t;
 
 #include "icons.h"
 #include "PhzProfile.h"
+#include "PhzFastrun.h"
 #include "HSClockManager.h"
 #include "HemisphereApplet.h"
 #include "HSUtils.h"
@@ -72,18 +73,7 @@ public:
     virtual void View() const = 0;
     virtual void Resume() = 0;
 
-    void BaseController(OC::IOFrame *ioframe) {
-        // Load the IO frame from CV inputs
-        PHZ_PROFILE(PhzProfile::LOAD, HS::frame.Load(ioframe));
-
-        // Cursor countdowns. See CursorBlink(), ResetCursor(), gfxCursor()
-        if (--cursor_countdown < -HSAPPLICATION_CURSOR_TICKS) cursor_countdown = HSAPPLICATION_CURSOR_TICKS;
-
-        Controller();
-
-        // set outputs from IO frame
-        PHZ_PROFILE(PhzProfile::SEND, HS::frame.Send(ioframe));
-    }
+    void BaseController(OC::IOFrame *ioframe);
 
     void BaseStart() {
         cursor_countdown = HSAPPLICATION_CURSOR_TICKS;
@@ -330,3 +320,16 @@ protected:
 private:
     int cursor_countdown; // Timer for cursor blinkin'
 };
+
+PHZ_HOT(BaseController) void HSApplication::BaseController(OC::IOFrame *ioframe) {
+    // Load the IO frame from CV inputs
+    PHZ_PROFILE(PhzProfile::LOAD, HS::frame.Load(ioframe));
+
+    // Cursor countdowns. See CursorBlink(), ResetCursor(), gfxCursor()
+    if (--cursor_countdown < -HSAPPLICATION_CURSOR_TICKS) cursor_countdown = HSAPPLICATION_CURSOR_TICKS;
+
+    Controller();
+
+    // set outputs from IO frame
+    PHZ_PROFILE(PhzProfile::SEND, HS::frame.Send(ioframe));
+}

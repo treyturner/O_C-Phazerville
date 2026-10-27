@@ -721,37 +721,7 @@ public:
         ProcessMIDI(usbMIDI);
     }
 
-    void Controller() {
-        // Clock duties are now called from BaseController, before frame Load
-
-        // this might be triggered by the internal clock...
-        if (jump_trig_.Clock() && !HS::clock_m.auto_reset) {
-          JumpToNextPreset();
-          // ^ this will sometimes queue a preset load
-
-          // The paradox is we need to process the clock first, in case jump_trig needs it,
-          // but then jump_trig will queue another preset load,
-          // so we have to process the queue again.
-          if (jump_trig_.is_clock()) ProcessQueue();
-        }
-
-        // execute Applets
-        for (int h = 0; h < 2; h++)
-        {
-            HemisphereApplet *applet = HS::get_applet(my_applet[h], h);
-
-            if (HS::clock_m.auto_reset)
-                applet->Reset();
-
-#ifdef PHZ_BOOT_BREADCRUMBS
-            PhzProfile::applet_names[h] = applet->applet_name();
-#endif
-            PHZ_PROFILE(PhzProfile::APPLET_L + h, applet->Controller());
-        }
-        HS::clock_m.auto_reset = false;
-
-        PHZ_PROFILE(PhzProfile::CURSORS, HemisphereApplet::ProcessCursors());
-    }
+    void Controller();
 
     void DrawFullScreen() const {
       int index = my_applet[zoom_slot];
@@ -1643,6 +1613,38 @@ size_t AppHemisphere::RestoreAppData(util::StreamBufferReader &stream_buffer) {
   return stream_buffer.read();
 }
 #endif
+
+PHZ_HOT(AppHemisphere_Controller) void AppHemisphere::Controller() {
+    // Clock duties are now called from BaseController, before frame Load
+
+    // this might be triggered by the internal clock...
+    if (jump_trig_.Clock() && !HS::clock_m.auto_reset) {
+      JumpToNextPreset();
+      // ^ this will sometimes queue a preset load
+
+      // The paradox is we need to process the clock first, in case jump_trig needs it,
+      // but then jump_trig will queue another preset load,
+      // so we have to process the queue again.
+      if (jump_trig_.is_clock()) ProcessQueue();
+    }
+
+    // execute Applets
+    for (int h = 0; h < 2; h++)
+    {
+        HemisphereApplet *applet = HS::get_applet(my_applet[h], h);
+
+        if (HS::clock_m.auto_reset)
+            applet->Reset();
+
+#ifdef PHZ_BOOT_BREADCRUMBS
+        PhzProfile::applet_names[h] = applet->applet_name();
+#endif
+        PHZ_PROFILE(PhzProfile::APPLET_L + h, applet->Controller());
+    }
+    HS::clock_m.auto_reset = false;
+
+    PHZ_PROFILE(PhzProfile::CURSORS, HemisphereApplet::ProcessCursors());
+}
 
 void AppHemisphere::Process(OC::IOFrame *ioframe) {
   BaseController(ioframe);
