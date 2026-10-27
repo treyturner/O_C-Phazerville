@@ -1,11 +1,17 @@
 #include "OC_strings.h"
 
+#define OC_STRINGIFY_(x) #x
+#define OC_STRINGIFY(x) OC_STRINGIFY_(x)
+
 namespace OC {
 
   namespace Strings {
 
   const char * const VERSION =
 #include "OC_version.h"
+#ifdef OC_VERSION_SUFFIX
+    "_" OC_STRINGIFY(OC_VERSION_SUFFIX)
+#endif
 #ifdef OC_VERSION_EXTRA
     OC_VERSION_EXTRA
 #endif

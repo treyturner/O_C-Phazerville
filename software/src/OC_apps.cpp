@@ -66,7 +66,7 @@ namespace menu = OC::menu;
 #include "APP_ENIGMA.h"
 #include "APP_NeuralNetwork.h"
 #include "APP_SCALEEDITOR.h"
-#ifndef NO_HEMISPHERE
+#if !defined(NO_HEMISPHERE) && !defined(NO_WAVEFORM_EDITOR)
 #include "APP_WAVEFORMEDITOR.h"
 #endif
 #include "APP_PONGGAME.h"
@@ -158,7 +158,7 @@ static constexpr OC::App available_apps[] = {
   DECLARE_APP('N','N', "Neural Net", NeuralNetwork),
   #endif
   DECLARE_APP('S','C', "Scale Editor", SCALEEDITOR),
-#ifndef NO_HEMISPHERE
+#if !defined(NO_HEMISPHERE) && !defined(NO_WAVEFORM_EDITOR)
   DECLARE_APP('W','A', "Waveform Editor", WaveformEditor),
 #endif
   #ifdef ENABLE_APP_PONG

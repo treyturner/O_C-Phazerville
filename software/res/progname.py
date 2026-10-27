@@ -24,6 +24,8 @@ env.Append(BUILD_FLAGS=[ f'-DOC_BUILD_TAG=\\"{git_rev}\\"' ])
 build_flags = env.ParseFlags(env['BUILD_FLAGS'])
 defines = build_flags.get("CPPDEFINES")
 for item in defines:
+    if item[0] == 'OC_VERSION_SUFFIX':
+        version += "_" + item[1]
     if item[0] == 'OC_VERSION_EXTRA':
         extras += item[1].strip('"')
 
