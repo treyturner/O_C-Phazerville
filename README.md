@@ -86,10 +86,12 @@ PEWPEWPEW, MIDI, AUTOMATONNETZ
 
 | Build | Target | RAM | Flash | Flash left |
 | --- | --- | ---: | ---: | ---: |
-| Full Hemisphere | T32 | 42,116 / 65,536 bytes | 256,276 / 262,144 bytes | 5,868 bytes |
-| Full Hemisphere | T32 VOR | 42,224 / 65,536 bytes | 259,028 / 262,144 bytes | 3,116 bytes |
-| Lean Hemisphere | T32 | 37,372 / 65,536 bytes | 208,552 / 262,144 bytes | 53,592 bytes |
-| Lean Hemisphere | T32 VOR | 37,428 / 65,536 bytes | 210,840 / 262,144 bytes | 51,304 bytes |
+| Full Hemisphere | T32 | 42,132 / 65,536 bytes | 256,104 / 262,144 bytes | 6,040 bytes |
+| Full Hemisphere | T32 VOR | 42,240 / 65,536 bytes | 258,856 / 262,144 bytes | 3,288 bytes |
+| Lean Hemisphere | T32 | 37,368 / 65,536 bytes | 208,424 / 262,144 bytes | 53,720 bytes |
+| Lean Hemisphere | T32 VOR | 37,428 / 65,536 bytes | 210,716 / 262,144 bytes | 51,428 bytes |
+
+All builds use `PHZ_DISPLAY_CHUNKED`, which sends the display in small pieces from the core ISR instead of by DMA. DMA display transfers corrupt the display on some Teensy 3.2 modules.
 
 T32 allocates every registered applet statically, so applets cost RAM whether or not they are loaded.
 

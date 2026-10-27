@@ -5,9 +5,10 @@ set -euo pipefail
 FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+MOAR_PRESETS,+LTO'
 # Upstream's curated applets plus Captain MIDI and Automatonnetz.
 LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ'
-# Experiments can add flags and tag the output, e.g.
-#   T32_EXTRA_BUILD_FLAGS='-DSOME_FLAG' VARIANT=test ./build_custom_pair.sh
-T32_EXTRA_BUILD_FLAGS="${T32_EXTRA_BUILD_FLAGS:-}"
+# All builds send the display without DMA, which corrupts the display on some
+# Teensy 3.2 modules. Experiments can override the flags and tag the output, e.g.
+#   T32_EXTRA_BUILD_FLAGS='-DPHZ_DISPLAY_CHUNKED -DSOME_FLAG' VARIANT=test ./build_custom_pair.sh
+T32_EXTRA_BUILD_FLAGS="${T32_EXTRA_BUILD_FLAGS:--DPHZ_DISPLAY_CHUNKED}"
 VARIANT="${VARIANT:+_${VARIANT}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

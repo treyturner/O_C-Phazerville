@@ -22,6 +22,8 @@ env:
   UPSTREAM_BRANCH: T32
   FULL_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+MOAR_PRESETS,+LTO
   LEAN_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ
+  # DMA display transfers corrupt the display on some Teensy 3.2 modules
+  T32_EXTRA_BUILD_FLAGS: -DPHZ_DISPLAY_CHUNKED
 
 jobs:
   build:
@@ -166,25 +168,25 @@ jobs:
 
         build_firmware \
           "full Hemisphere T32 custom firmware" \
-          "${FULL_CUSTOM_BUILD_FLAGS}" \
+          "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
           "T32_full" \
           "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_full-${SOURCE_SHORT_SHA}.hex"
 
         build_firmware \
           "full Hemisphere VOR T32 custom firmware" \
-          "${FULL_CUSTOM_BUILD_FLAGS} -DVOR" \
+          "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
           "T32_VOR_full" \
           "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_full-${SOURCE_SHORT_SHA}.hex"
 
         build_firmware \
           "lean Hemisphere T32 custom firmware" \
-          "${LEAN_CUSTOM_BUILD_FLAGS}" \
+          "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
           "T32_lean" \
           "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_lean-${SOURCE_SHORT_SHA}.hex"
 
         build_firmware \
           "lean Hemisphere VOR T32 custom firmware" \
-          "${LEAN_CUSTOM_BUILD_FLAGS} -DVOR" \
+          "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
           "T32_VOR_lean" \
           "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
 
