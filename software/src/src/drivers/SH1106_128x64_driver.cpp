@@ -258,6 +258,25 @@ bool SH1106_128x64_Driver::SendPage(uint_fast8_t index, const uint8_t *data) {
 #endif // PHZ_DISPLAY_CHUNKED
 }
 
+// Sends a whole frame synchronously, without DMA or the core ISR. Only for
+// last-resort screens, e.g. from a fault handler.
+void SH1106_128x64_Driver::SendFrameBlocking(const uint8_t *frame) {
+#ifdef DMA_PAGE_TRANSFER
+  page_dma.disable();
+  SPI0_RSER = 0;
+#endif
+  digitalWriteFast(OLED_CS, OLED_CS_INACTIVE);
+  for (size_t p = 0; p < kNumPages; ++p) {
+    SH1106_data_start_seq[2] = 0xb0 | p;
+    digitalWriteFast(OLED_DC, LOW);
+    digitalWriteFast(OLED_CS, OLED_CS_ACTIVE);
+    SPI_send(SH1106_data_start_seq, sizeof(SH1106_data_start_seq));
+    digitalWriteFast(OLED_DC, HIGH);
+    SPI_send((void *)(frame + p * kPageSize), kPageSize);
+    digitalWriteFast(OLED_CS, OLED_CS_INACTIVE);
+  }
+}
+
 void SH1106_128x64_Driver::SPI_send(void *bufr, size_t n) {
 
   // adapted from https://github.com/xxxajk/spi4teensy3

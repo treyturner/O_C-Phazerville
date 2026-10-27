@@ -25,6 +25,7 @@
 #include "OC_scales.h"
 #include "OC_ui.h"
 #include "OC_apps.h"
+#include "PhzTrace.h"
 #include "OC_menus.h"
 #include "OC_config.h"
 #include "OC_digital_inputs.h"
@@ -290,6 +291,7 @@ static_assert(totalsize < OC::AppData::kAppDataSize, "EEPROM Allocation Exceeded
 
 FLASHMEM
 void save_app_data() {
+  PHZ_TRACE_STEP("S1 save globals");
   save_global_settings(); // yeah, why not
 
   SERIAL_PRINTLN("Save app data... (%u bytes available)", OC::AppData::kAppDataSize);
@@ -312,6 +314,7 @@ void save_app_data() {
       AppChunkHeader *chunk = reinterpret_cast<AppChunkHeader *>(data);
       chunk->id = app.id;
       chunk->length = storage_size;
+      PHZ_TRACE_STEP("S2 app save", app.name);
       #ifdef PRINT_DEBUG
         SERIAL_PRINTLN("* %s (%02x) : Saved %u bytes... (%u)", app.name, app.id, app.Save(chunk + 1), storage_size);
       #else
@@ -322,7 +325,9 @@ void save_app_data() {
     }
   }
   SERIAL_PRINTLN("App settings used: %u/%u", app_settings.used, EEPROM_APPDATA_BINARY_SIZE);
+  PHZ_TRACE_STEP("S3 eeprom write");
   app_data_storage.Save(app_settings);
+  PHZ_TRACE_STEP("S4 eeprom written");
   SERIAL_PRINTLN("Saved app settings in page_index %d", app_data_storage.page_index());
 }
 

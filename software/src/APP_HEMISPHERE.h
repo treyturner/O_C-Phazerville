@@ -268,8 +268,11 @@ public:
     }
     void Suspend() {
         if (hem_active_preset) {
+            PHZ_TRACE_STEP("H1 store preset");
             if (HS::auto_save_enabled || 0 == preset_id) StoreToPreset(preset_id, !HS::auto_save_enabled);
+            PHZ_TRACE_STEP("H5 send sysex");
             hem_active_preset->OnSendSysEx();
+            PHZ_TRACE_STEP("H6 sysex sent");
         }
     }
 
@@ -284,6 +287,7 @@ public:
                 doSave = 1;
             hem_active_preset->SetAppletId(HEM_SIDE(h), HS::available_applets[index].id);
 
+            PHZ_TRACE_STEP("H2 data request", HS::available_applets[index].instance[h]->applet_name());
             uint64_t data = HS::available_applets[index].instance[h]->OnDataRequest();
             if (data != applet_data[h]) doSave = 1;
             applet_data[h] = data;
@@ -306,7 +310,9 @@ public:
           // initiate actual EEPROM save
           OC::CORE::app_isr_enabled = false;
           //OC::draw_save_message(32);
+          PHZ_TRACE_STEP("H3 save app data");
           OC::save_app_data();
+          PHZ_TRACE_STEP("H4 app data saved");
           //OC::draw_save_message(64);
           OC::CORE::app_isr_enabled = true;
 

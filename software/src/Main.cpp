@@ -43,8 +43,64 @@
 #include "util/util_debugpins.h"
 #include "VBiasManager.h"
 #include "HSMIDI.h"
+#include "PhzTrace.h"
 
 unsigned long LAST_REDRAW_TIME = 0;
+#ifdef PHZ_TRACE
+static const char *phz_trace_label = "(none)";
+static const char *phz_trace_detail = nullptr;
+
+void PhzTrace(const char *label, const char *detail) {
+  phz_trace_label = label;
+  phz_trace_detail = detail;
+  GRAPHICS_BEGIN_FRAME(true);
+  graphics.setPrintPos(0, 0);
+  graphics.print("TRACE");
+  graphics.setPrintPos(0, 12);
+  graphics.print(label);
+  if (detail) {
+    graphics.setPrintPos(0, 24);
+    graphics.print(detail);
+  }
+  GRAPHICS_END_FRAME();
+  delay(300);
+}
+
+// Called from hard_fault_isr with the stacked exception frame.
+extern "C" __attribute__((used, noinline)) void phz_fault_report(const uint32_t *frame_sp) {
+  uint8_t frame[SH1106_128x64_Driver::kFrameSize];
+  graphics.Begin(frame, weegfx::CLEAR_FRAME_ENABLE);
+  graphics.setPrintPos(0, 0);
+  graphics.printf("FAULT pc %08lx", frame_sp[6]);
+  graphics.setPrintPos(0, 10);
+  graphics.printf("lr %08lx", frame_sp[5]);
+  graphics.setPrintPos(0, 20);
+  graphics.printf("cfsr %08lx", SCB_CFSR);
+  graphics.setPrintPos(0, 30);
+  graphics.printf("hfsr %08lx", SCB_HFSR);
+  graphics.setPrintPos(0, 40);
+  graphics.printf("bfar %08lx", SCB_BFAR);
+  graphics.setPrintPos(0, 50);
+  graphics.print(phz_trace_label);
+  if (phz_trace_detail) {
+    graphics.print(" ");
+    graphics.print(phz_trace_detail);
+  }
+  graphics.End();
+  SH1106_128x64_Driver::SendFrameBlocking(frame);
+  while (true) { }
+}
+
+extern "C" __attribute__((naked)) void hard_fault_isr(void) {
+  __asm volatile(
+    "tst lr, #4\n"
+    "ite eq\n"
+    "mrseq r0, msp\n"
+    "mrsne r0, psp\n"
+    "b phz_fault_report\n");
+}
+#endif
+
 uint_fast8_t MENU_REDRAW = true;
 OC::UiMode ui_mode = OC::UI_MODE_MENU;
 const bool DUMMY = false;
@@ -180,10 +236,16 @@ void FASTRUN loop() {
   OC::CORE::display_update_enabled = true;
   OC::CORE::app_loop_enabled = true;
   uint32_t menu_redraws = 0;
+#ifdef PHZ_TRACE
+  uint8_t menu_trace = 0; // steps of the first pass after entering the app menu
+#endif
   while (true) {
 
     // Refresh display
     if (MENU_REDRAW && OC::CORE::display_update_enabled) {
+#ifdef PHZ_TRACE
+      if (menu_trace == 1) PHZ_TRACE_STEP("M3 menu draw");
+#endif
       GRAPHICS_BEGIN_FRAME(false); // Don't busy wait
 
         if (OC::UI_MODE_APP_SETTINGS == ui_mode) {
@@ -209,6 +271,12 @@ void FASTRUN loop() {
         MENU_REDRAW = 0;
         LAST_REDRAW_TIME = millis();
       GRAPHICS_END_FRAME();
+#ifdef PHZ_TRACE
+      if (menu_trace == 1) {
+        PHZ_TRACE_STEP("M4 menu drawn");
+        menu_trace = 2;
+      }
+#endif
     }
 
     // Run current app
@@ -220,7 +288,17 @@ void FASTRUN loop() {
 
     // UI events
     if (OC::UI_MODE_APP_SETTINGS == ui_mode) {
-      if (!OC::ui.AppSettings(false)) {
+#ifdef PHZ_TRACE
+      if (menu_trace == 2) PHZ_TRACE_STEP("M5 menu events");
+#endif
+      const bool menu_open = OC::ui.AppSettings(false);
+#ifdef PHZ_TRACE
+      if (menu_trace == 2) {
+        PHZ_TRACE_STEP("M6 menu running");
+        menu_trace = 0;
+      }
+#endif
+      if (!menu_open) {
         // exit menu, resume app
         ui_mode = OC::UI_MODE_MENU;
       }
@@ -233,8 +311,14 @@ void FASTRUN loop() {
           OC::apps::current_app->HandleAppEvent(OC::APP_EVENT_SCREENSAVER_ON);
         else if (OC::UI_MODE_SCREENSAVER == ui_mode)
           OC::apps::current_app->HandleAppEvent(OC::APP_EVENT_SCREENSAVER_OFF);
-        else if (OC::UI_MODE_APP_SETTINGS == mode)
+        else if (OC::UI_MODE_APP_SETTINGS == mode) {
+          PHZ_TRACE_STEP("M1 suspend app");
           OC::apps::current_app->HandleAppEvent(OC::APP_EVENT_SUSPEND);
+          PHZ_TRACE_STEP("M2 app suspended");
+#ifdef PHZ_TRACE
+          menu_trace = 1;
+#endif
+        }
 
         ui_mode = mode;
       }
