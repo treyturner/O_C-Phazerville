@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+MIDI,+AUTOMATONNETZ,+NOENVSEQ,+NOPIQUET,+NOFROGSEQ'
-EXTRA_BUILD_FLAGS='-DNO_DISPLAY_DMA -DPHZ_BOOT_BREADCRUMBS -DPHZ_APP_ISR_DIVIDER=8'
+# Defaults build the lean T32 firmware; override to trace another build, e.g.
+#   BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,...' \
+#   EXTRA_BUILD_FLAGS='-DNO_DISPLAY_DMA -DPHZ_DISPLAY_CHUNKED -DNO_APPLET_SCOPE -DVOR' \
+#   VARIANT=VOR_pewpewpew_chunked ./build_breadcrumb.sh
+BUILD_REQUEST="${BUILD_REQUEST:-oc-build/1 target=T32_VOR apps=+MIDI,+AUTOMATONNETZ,+NOENVSEQ,+NOPIQUET,+NOFROGSEQ}"
+EXTRA_BUILD_FLAGS="${EXTRA_BUILD_FLAGS:--DNO_DISPLAY_DMA -DPHZ_APP_ISR_DIVIDER=8} -DPHZ_BOOT_BREADCRUMBS"
+VARIANT="${VARIANT:-lean}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -26,12 +31,12 @@ mkdir -p "${ARTIFACT_DIR}"
 
 cd "${SCRIPT_DIR}"
 
-echo "Building breadcrumb lean Hemisphere T32 custom firmware"
-export CUSTOM_BUILD_FLAGS="${CUSTOM_BUILD_FLAGS} ${EXTRA_BUILD_FLAGS} -DOC_VERSION_SUFFIX=T32_breadcrumb_lean"
+echo "Building breadcrumb ${VARIANT} T32 custom firmware"
+export CUSTOM_BUILD_FLAGS="${CUSTOM_BUILD_FLAGS} ${EXTRA_BUILD_FLAGS} -DOC_VERSION_SUFFIX=T32_${VARIANT}_breadcrumb"
 "${PIO}" run -t clean -e custom
 "${PIO}" run -e custom
 cp .pio/build/custom/*.hex \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_breadcrumb_lean-${SOURCE_SHORT_SHA}.hex"
+  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_${VARIANT}_breadcrumb-${SOURCE_SHORT_SHA}.hex"
 
 echo "Built artifact:"
-ls -lh "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_breadcrumb_lean-${SOURCE_SHORT_SHA}.hex"
+ls -lh "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_${VARIANT}_breadcrumb-${SOURCE_SHORT_SHA}.hex"

@@ -104,6 +104,8 @@ static OC::UiMode ui_mode = OC::UI_MODE_MENU;
 static OC::IOFrame io_frame;
 
 #ifdef PHZ_BOOT_BREADCRUMBS
+static uint32_t boot_app_run_cycles = 0; // one app Process() call, timed in loop()
+
 FLASHMEM
 static void BootBreadcrumb(const char *label) {
   SERIAL_PRINTLN("[BOOT] %s", label);
@@ -112,6 +114,15 @@ static void BootBreadcrumb(const char *label) {
   graphics.print("BOOT TRACE");
   graphics.setPrintPos(0, 12);
   graphics.print(label);
+  // the core ISR has a 60us budget (OC_CORE_TIMER_RATE)
+  graphics.setPrintPos(0, 24);
+  graphics.printf("ISR avg%3lu max%3lu us",
+                  debug::cycles_to_us(OC::DEBUG::ISR_cycles.value()),
+                  debug::cycles_to_us(OC::DEBUG::ISR_cycles.max_value()));
+  if (boot_app_run_cycles) {
+    graphics.setPrintPos(0, 36);
+    graphics.printf("app run %lu us", debug::cycles_to_us(boot_app_run_cycles));
+  }
   GRAPHICS_END_FRAME();
   delay(250);
 }
@@ -823,7 +834,13 @@ FLASHMEM __attribute__((noinline)) void loop() {
   BOOT_BREADCRUMB_ONCE(after_read_once, "L04b post read");
   BOOT_BREADCRUMB_ONCE(before_run_once, "L04c pre run");
 #ifdef PHZ_BOOT_BREADCRUMBS
-  app_switcher.DebugRun(&io_frame);
+  {
+    noInterrupts();
+    const uint32_t start = ARM_DWT_CYCCNT;
+    app_switcher.DebugRun(&io_frame);
+    boot_app_run_cycles = ARM_DWT_CYCCNT - start;
+    interrupts();
+  }
 #endif
   BOOT_BREADCRUMB_ONCE(after_run_once, "L04d post run");
   BOOT_BREADCRUMB_ONCE(before_write_once, "L04e pre write");
