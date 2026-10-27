@@ -27,8 +27,8 @@ namespace OC {
   // TODO: array of alternate titles, one for every letter of the alphabet
 
 #if defined(VOR)
-  const char * const NAME = "Plum Audio O_C+";
-  const char * const SHORT_NAME = "OC+";
+  const char * const NAME = "Plum Audio 1uO_c 4ROBOTS";
+  const char * const SHORT_NAME = "1uO_c";
 #elif defined(ARDUINO_TEENSY41)
   const char * const NAME = "O.R.N.8";
   const char * const SHORT_NAME = "oC8";
