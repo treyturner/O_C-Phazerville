@@ -32,7 +32,16 @@
 #include "../../util/util_SPIFIFO.h"
 
 // NOTE: Don't disable DMA unless you absolutely know what you're doing. It will hurt you.
+#ifndef PHZ_DISPLAY_CHUNKED
 #define DMA_PAGE_TRANSFER
+#else
+// Without DMA, a page is sent in pieces that fit the 4-entry SPI TX FIFO, one
+// piece per core ISR. Each piece is pushed without waiting; Flush() at the
+// start of the next ISR waits for it and releases CS before the DAC update.
+static constexpr int kChunkWords = 4; // 16-bit frames per piece
+static int chunk_offset = -1; // byte offset into the page; -1 = page header next
+static uint32_t chunk_frames = 0; // frames pushed by the piece in flight
+#endif
 #ifdef DMA_PAGE_TRANSFER
 #include <DMAChannel.h>
 static DMAChannel page_dma;
@@ -162,6 +171,14 @@ void SH1106_128x64_Driver::Flush() {
     SPI0_RSER = 0;
     SPI0_SR = 0xFF0F0000;
   }
+#elif defined(PHZ_DISPLAY_CHUNKED)
+  if (chunk_frames) {
+    // every transmitted frame lands in the RX FIFO
+    while (((SPI0_SR & SPI_SR_RXCTR) >> 4) < chunk_frames) { }
+    digitalWriteFast(OLED_CS, OLED_CS_INACTIVE);
+    SPI0_MCR = SPI_MCR_MSTR | SPI_MCR_CLR_RXF | SPI_MCR_CLR_TXF | SPI_MCR_PCSIS(0x1F);
+    chunk_frames = 0;
+  }
 #endif
 }
 
@@ -190,6 +207,34 @@ void SH1106_128x64_Driver::Clear() {
 
 /*static*/
 bool SH1106_128x64_Driver::SendPage(uint_fast8_t index, const uint8_t *data) {
+#ifdef PHZ_DISPLAY_CHUNKED
+  // the DAC update has completed, so the bus is idle
+  SPI0_MCR = SPI_MCR_MSTR | SPI_MCR_CLR_RXF | SPI_MCR_CLR_TXF | SPI_MCR_PCSIS(0x1F);
+  if (chunk_offset < 0) {
+    SH1106_data_start_seq[2] = 0xb0 | index;
+    digitalWriteFast(OLED_DC, LOW); // instruction mode
+    digitalWriteFast(OLED_CS, OLED_CS_ACTIVE);
+    for (size_t i = 0; i < sizeof(SH1106_data_start_seq); ++i)
+      SPI0_PUSHR = SPI_PUSHR_CONT | SPI_PUSHR_CTAS(0) | SH1106_data_start_seq[i];
+    chunk_frames = sizeof(SH1106_data_start_seq);
+    chunk_offset = 0;
+    return false;
+  }
+
+  digitalWriteFast(OLED_DC, HIGH); // data mode
+  digitalWriteFast(OLED_CS, OLED_CS_ACTIVE);
+  const uint8_t *buf = data + chunk_offset;
+  for (int i = 0; i < kChunkWords; ++i) {
+    uint16_t w = *buf++ << 8;
+    w |= *buf++;
+    SPI0_PUSHR = SPI_PUSHR_CONT | SPI_PUSHR_CTAS(1) | w;
+  }
+  chunk_frames = kChunkWords;
+  chunk_offset += kChunkWords * 2;
+  if (chunk_offset < (int)kPageSize) return false;
+  chunk_offset = -1;
+  return true;
+#else
   SH1106_data_start_seq[2] = 0xb0 | index;
 
   digitalWriteFast(OLED_DC, LOW); // U8G_ESC_ADR(0),           /* instruction mode */
@@ -210,6 +255,7 @@ bool SH1106_128x64_Driver::SendPage(uint_fast8_t index, const uint8_t *data) {
   digitalWriteFast(OLED_CS, OLED_CS_INACTIVE); // U8G_ESC_CS(0)
 #endif
   return true;
+#endif // PHZ_DISPLAY_CHUNKED
 }
 
 void SH1106_128x64_Driver::SPI_send(void *bufr, size_t n) {
