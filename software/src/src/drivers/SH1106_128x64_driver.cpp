@@ -137,6 +137,9 @@ void SH1106_128x64_Driver::Init() {
 }
 
 /*static*/
+// Flush() and SendPage() stay out of line: inlined into the core ISR (as LTO
+// does), the DMA page transfer corrupts the display.
+__attribute__((noinline))
 void SH1106_128x64_Driver::Flush() {
 #ifdef DMA_PAGE_TRANSFER
   // Famous last words: "Assume DMA transfer has completed, else we're doomed"
@@ -161,6 +164,8 @@ void SH1106_128x64_Driver::Flush() {
     // DmaSpi.h::post_finishCurrentTransfer_impl
     SPI0_RSER = 0;
     SPI0_SR = 0xFF0F0000;
+    // drop the page's RX bytes so the DAC's SPIFIFO reads wait for its own frames
+    SPI0_MCR = SPI_MCR_MSTR | SPI_MCR_CLR_RXF | SPI_MCR_PCSIS(0x1F);
   }
 #endif
 }
@@ -189,6 +194,7 @@ void SH1106_128x64_Driver::Clear() {
 }
 
 /*static*/
+__attribute__((noinline))
 bool SH1106_128x64_Driver::SendPage(uint_fast8_t index, const uint8_t *data) {
   SH1106_data_start_seq[2] = 0xb0 | index;
 
