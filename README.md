@@ -91,8 +91,6 @@ PEWPEWPEW, MIDI, AUTOMATONNETZ
 | Lean Hemisphere | T32 | 37,592 / 65,536 bytes | 210,472 / 262,144 bytes | 51,672 bytes |
 | Lean Hemisphere | T32 VOR | 37,652 / 65,536 bytes | 212,764 / 262,144 bytes | 49,380 bytes |
 
-All builds use `PHZ_DISPLAY_CHUNKED`, which sends the display in small pieces from the core ISR instead of by DMA. DMA display transfers corrupt the display on some Teensy 3.2 modules.
-
 T32 allocates every registered applet statically, so applets cost RAM whether or not they are loaded.
 
 ### Option 2: Arduino IDE
