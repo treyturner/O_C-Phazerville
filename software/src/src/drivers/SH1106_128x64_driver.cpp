@@ -156,6 +156,7 @@ void SH1106_128x64_Driver::Flush() {
     while (!page_dma.complete()) { }
     while (0 != (SPI0_SR & 0x0000f000)); // SPIx_SR TXCTR
     while (!(SPI0_SR & SPI_SR_TCF));
+    delayMicroseconds(1); // TCF is already set by earlier frames; let the last one finish
     page_dma_active = false;
 
     digitalWriteFast(OLED_CS, OLED_CS_INACTIVE); // U8G_ESC_CS(0)
