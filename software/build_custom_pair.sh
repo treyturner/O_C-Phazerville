@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Every applet bundle, no Wave-Edit, 8 presets. Needs LTO to fit.
-FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+MOAR_PRESETS,+LTO'
+FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+LTO'
 # Upstream's curated applets plus Captain MIDI and Automatonnetz.
 LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ'
 # All builds send the display without DMA, which corrupts the display on some

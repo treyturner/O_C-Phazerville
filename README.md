@@ -74,9 +74,9 @@ _**Pro-tip**_: If you decide to fork the project, and enable GitHub Actions on y
 
 This fork tracks upstream's `T32` branch and builds four Teensy 3.2 firmwares with `software/build_custom_pair.sh` and `.github/workflows/firmware.yml`. CI builds on every push to `main` and publishes a versioned release. A daily check merges and builds new commits from upstream `T32`.
 
-Full Hemisphere uses every applet bundle, drops the Wave-Edit app, and keeps 8 presets. It needs LTO to fit:
+Full Hemisphere uses every applet bundle except CVSeq, drops the Wave-Edit app, and keeps 8 presets. It needs LTO to fit. It includes every applet backported from upstream `main` (see `pr/t32-fixes-and-backports`), including SeQuant and Panner. CVSeq makes room for them; upstream `main` no longer registers it either.
 ```
-APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, MOAR_PRESETS, LTO
+APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, NOCVSEQ, MOAR_PRESETS, LTO
 ```
 
 Lean Hemisphere uses upstream's curated applet set plus Captain MIDI and Automatonnetz:
@@ -86,10 +86,10 @@ PEWPEWPEW, MIDI, AUTOMATONNETZ
 
 | Build | Target | RAM | Flash | Flash left |
 | --- | --- | ---: | ---: | ---: |
-| Full Hemisphere | T32 | 42,132 / 65,536 bytes | 256,104 / 262,144 bytes | 6,040 bytes |
-| Full Hemisphere | T32 VOR | 42,240 / 65,536 bytes | 258,856 / 262,144 bytes | 3,288 bytes |
-| Lean Hemisphere | T32 | 37,368 / 65,536 bytes | 208,424 / 262,144 bytes | 53,720 bytes |
-| Lean Hemisphere | T32 VOR | 37,428 / 65,536 bytes | 210,716 / 262,144 bytes | 51,428 bytes |
+| Full Hemisphere | T32 | 41,884 / 65,536 bytes | 255,624 / 262,144 bytes | 6,520 bytes |
+| Full Hemisphere | T32 VOR | 41,996 / 65,536 bytes | 258,376 / 262,144 bytes | 3,768 bytes |
+| Lean Hemisphere | T32 | 37,592 / 65,536 bytes | 210,472 / 262,144 bytes | 51,672 bytes |
+| Lean Hemisphere | T32 VOR | 37,652 / 65,536 bytes | 212,764 / 262,144 bytes | 49,380 bytes |
 
 All builds use `PHZ_DISPLAY_CHUNKED`, which sends the display in small pieces from the core ISR instead of by DMA. DMA display transfers corrupt the display on some Teensy 3.2 modules.
 

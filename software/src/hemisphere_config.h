@@ -207,7 +207,9 @@ AppletRegistry reg{
     DeclareApplet<ClockDivider>{6, 0x04},
     DeclareApplet<ClkToGate>{78, 0x04},
     DeclareApplet<ClockSkip>{28, 0x04},
+#ifndef NO_APPLET_CVSEQ
     DeclareApplet<CVSeq>{95, 0x00},
+#endif
     DeclareApplet<DivSeq>{68, 0x06},
     DeclareApplet<DivSeq10>{80, 0x06},
     DeclareApplet<DrumMap>{57, 0x02},

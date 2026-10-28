@@ -20,6 +20,8 @@ for item in flags:
         custom_defines += " -DNO_HEMISPHERE"
     if f.startswith('NOWAVE') or f.startswith('NO_WAVE'):
         custom_defines += " -DNO_WAVEFORM_EDITOR"
+    if f.startswith('NOCVSEQ') or f.startswith('NO_CVSEQ'):
+        custom_defines += " -DNO_APPLET_CVSEQ"
     if f == 'LTO':
         custom_defines += " -DTEENSY_OPT_SMALLEST_CODE_LTO"
     if f.startswith('VOR'):
