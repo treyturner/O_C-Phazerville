@@ -87,7 +87,7 @@ PEWPEWPEW, MIDI, AUTOMATONNETZ
 | Build | Target | RAM | Flash | Flash left |
 | --- | --- | ---: | ---: | ---: |
 | Full Hemisphere | T32 | 41,712 / 65,536 bytes | 255,932 / 262,144 bytes | 6,212 bytes |
-| Full Hemisphere | T32 VOR | 41,824 / 65,536 bytes | 258,684 / 262,144 bytes | 3,460 bytes |
+| Full Hemisphere | T32 VOR | 41,816 / 65,536 bytes | 258,668 / 262,144 bytes | 3,476 bytes |
 | Lean Hemisphere | T32 | 37,596 / 65,536 bytes | 210,688 / 262,144 bytes | 51,456 bytes |
 | Lean Hemisphere | T32 VOR | 37,652 / 65,536 bytes | 212,960 / 262,144 bytes | 49,184 bytes |
 
