@@ -137,8 +137,7 @@ void SH1106_128x64_Driver::Init() {
 }
 
 /*static*/
-// Flush() and SendPage() stay out of line: inlined into the core ISR (as LTO
-// does), the DMA page transfer corrupts the display.
+// Flush() and SendPage() corrupt the display if inlined
 __attribute__((noinline))
 void SH1106_128x64_Driver::Flush() {
 #ifdef DMA_PAGE_TRANSFER
@@ -156,7 +155,7 @@ void SH1106_128x64_Driver::Flush() {
     while (!page_dma.complete()) { }
     while (0 != (SPI0_SR & 0x0000f000)); // SPIx_SR TXCTR
     while (!(SPI0_SR & SPI_SR_TCF));
-    delayMicroseconds(1); // TCF is already set by earlier frames; let the last one finish
+    delayMicroseconds(1); // TCF already set; let the last frame finish
     page_dma_active = false;
 
     digitalWriteFast(OLED_CS, OLED_CS_INACTIVE); // U8G_ESC_CS(0)
@@ -165,7 +164,7 @@ void SH1106_128x64_Driver::Flush() {
     // DmaSpi.h::post_finishCurrentTransfer_impl
     SPI0_RSER = 0;
     SPI0_SR = 0xFF0F0000;
-    // drop the page's RX bytes so the DAC's SPIFIFO reads wait for its own frames
+    // drop RX bytes so DAC reads wait for their own frames
     SPI0_MCR = SPI_MCR_MSTR | SPI_MCR_CLR_RXF | SPI_MCR_PCSIS(0x1F);
   }
 #endif
