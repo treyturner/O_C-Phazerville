@@ -86,10 +86,10 @@ PEWPEWPEW, MIDI, AUTOMATONNETZ
 
 | Build | Target | RAM | Flash | Flash left |
 | --- | --- | ---: | ---: | ---: |
-| Full Hemisphere | T32 | 41,712 / 65,536 bytes | 255,932 / 262,144 bytes | 6,212 bytes |
-| Full Hemisphere | T32 VOR | 41,816 / 65,536 bytes | 258,668 / 262,144 bytes | 3,476 bytes |
-| Lean Hemisphere | T32 | 37,596 / 65,536 bytes | 210,688 / 262,144 bytes | 51,456 bytes |
-| Lean Hemisphere | T32 VOR | 37,652 / 65,536 bytes | 212,960 / 262,144 bytes | 49,184 bytes |
+| Full Hemisphere | T32 | 42,228 / 65,536 bytes | 256,044 / 262,144 bytes | 6,100 bytes |
+| Full Hemisphere | T32 VOR | 42,332 / 65,536 bytes | 258,780 / 262,144 bytes | 3,364 bytes |
+| Lean Hemisphere | T32 | 38,116 / 65,536 bytes | 210,800 / 262,144 bytes | 51,344 bytes |
+| Lean Hemisphere | T32 VOR | 38,164 / 65,536 bytes | 213,072 / 262,144 bytes | 49,072 bytes |
 
 T32 allocates every registered applet statically, so applets cost RAM whether or not they are loaded.
 
