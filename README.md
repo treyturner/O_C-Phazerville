@@ -79,10 +79,21 @@ Full Hemisphere uses every applet bundle except CVSeq, drops the Wave-Edit app, 
 APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, NOCVSEQ, MOAR_PRESETS, LTO
 ```
 
-Lean Hemisphere uses upstream's curated applet set plus Captain MIDI, Automatonnetz and 27 more applets (`LEANPLUS`, listed in `hemisphere_config.h`):
+Lean Hemisphere uses upstream's curated applet set plus 27 more applets (`LEANPLUS`, listed in `hemisphere_config.h`), and adds the Captain MIDI and Automatonnetz apps. It keeps the Wave-Edit app, uses 4 presets instead of 8, and doesn't use LTO.
 ```
 PEWPEWPEW, MIDI, AUTOMATONNETZ, LEANPLUS
 ```
+
+Lean is a subset of full's applets. To make room for the two apps, it leaves out these 17:
+
+| Bundle | Applets left out |
+| --- | --- |
+| Sequencing | EnigmaJr, EuclidO, ResetClock, Seq32, SeqPlay7, SwitchSeq, TruthCat3, TruthCat4 |
+| Quantizers | EnsOscKey |
+| Logic and utility | hMIDIIn, hMIDIOut, TLNeuron |
+| Weird stuff | Binary, BitBeat, BootsNCat, Palimpsest, RunglBook |
+
+Full has no Captain MIDI or Automatonnetz, so MIDI-to-CV there is the hMIDIIn and hMIDIOut applets only. Lean has the apps but not those two applets.
 
 | Build | Target | RAM | Flash | Flash left |
 | --- | --- | ---: | ---: | ---: |
