@@ -311,6 +311,40 @@ AppletRegistry reg{
 
 #endif // !PEWPEWPEW
 
+#if defined(PHZ_LEAN_EXTRAS) && defined(PEWPEWPEW)
+    // fork-only: fill the flash PEWPEWPEW leaves free
+    // logic, gates, utilities
+    DeclareApplet<Logic>{10, 0x44},
+    DeclareApplet<Compare>{30, 0x10},
+    DeclareApplet<Switch>{3, 0x10},
+    DeclareApplet<GatedVCA>{17, 0x50},
+    DeclareApplet<Panner>{100, 0x10},
+    DeclareApplet<GateDelay>{29, 0x04},
+    DeclareApplet<ClockSkip>{28, 0x04},
+    DeclareApplet<Tuner>{39, 0x80},
+    DeclareApplet<LowerRenz>{21, 0x01},
+    DeclareApplet<Combin8>{82, 0x10},
+    DeclareApplet<Shuffle>{36, 0x04},
+    DeclareApplet<Trending>{37, 0x40},
+    DeclareApplet<ShiftGate>{48, 0x45},
+    // quantizers
+    DeclareApplet<DualQuant>{9, 0x08},
+    DeclareApplet<ScaleDuet>{26, 0x08},
+    DeclareApplet<OffsetQuant>{90, 0x08},
+    DeclareApplet<Chordinator>{64, 0x08},
+    DeclareApplet<SeQuant>{86, 0x08},
+    DeclareApplet<DuoTET>{63, 0x08},
+    DeclareApplet<Calibr8>{88, 0x10},
+    DeclareApplet<MultiScale>{73, 0x08},
+    // sequencing
+    DeclareApplet<ASR>{47, 0x09},
+    DeclareApplet<Carpeggio>{32, 0x0a},
+    DeclareApplet<ShiftReg>{77, 0x45},
+    DeclareApplet<TrigSeq>{11, 0x06},
+    DeclareApplet<TrigSeq16>{25, 0x06},
+    DeclareApplet<CVRecV2>{24, 0x02},
+#endif
+
 };
 
 

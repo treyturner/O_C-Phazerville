@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Every applet bundle, no Wave-Edit, 8 presets. Needs LTO to fit.
 FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+LTO'
-# Upstream's curated applets plus Captain MIDI and Automatonnetz.
-LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ'
+# Upstream's curated applets plus Captain MIDI, Automatonnetz and the fork's extras.
+LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ,+LEANPLUS'
 # Experiments can add flags and tag the output, e.g.
 #   T32_EXTRA_BUILD_FLAGS='-DSOME_FLAG' VARIANT=test ./build_custom_pair.sh
 # The CI "_profile" builds are:

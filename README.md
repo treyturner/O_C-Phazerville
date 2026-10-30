@@ -79,17 +79,17 @@ Full Hemisphere uses every applet bundle except CVSeq, drops the Wave-Edit app, 
 APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, NOCVSEQ, MOAR_PRESETS, LTO
 ```
 
-Lean Hemisphere uses upstream's curated applet set plus Captain MIDI and Automatonnetz:
+Lean Hemisphere uses upstream's curated applet set plus Captain MIDI, Automatonnetz and 27 more applets (`LEANPLUS`, listed in `hemisphere_config.h`):
 ```
-PEWPEWPEW, MIDI, AUTOMATONNETZ
+PEWPEWPEW, MIDI, AUTOMATONNETZ, LEANPLUS
 ```
 
 | Build | Target | RAM | Flash | Flash left |
 | --- | --- | ---: | ---: | ---: |
 | Full Hemisphere | T32 | 42,228 / 65,536 bytes | 256,044 / 262,144 bytes | 6,100 bytes |
 | Full Hemisphere | T32 VOR | 42,332 / 65,536 bytes | 258,780 / 262,144 bytes | 3,364 bytes |
-| Lean Hemisphere | T32 | 38,116 / 65,536 bytes | 210,800 / 262,144 bytes | 51,344 bytes |
-| Lean Hemisphere | T32 VOR | 38,164 / 65,536 bytes | 213,072 / 262,144 bytes | 49,072 bytes |
+| Lean Hemisphere | T32 | 43,276 / 65,536 bytes | 254,688 / 262,144 bytes | 7,456 bytes |
+| Lean Hemisphere | T32 VOR | 43,324 / 65,536 bytes | 257,136 / 262,144 bytes | 5,008 bytes |
 
 T32 allocates every registered applet statically, so applets cost RAM whether or not they are loaded.
 

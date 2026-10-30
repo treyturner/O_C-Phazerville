@@ -78,6 +78,8 @@ for item in flags:
         custom_defines += " -DENABLE_APP_REFERENCES"
     if f.startswith('GRIDS2'):
         custom_defines += " -DDRUMMAP_GRIDS2"
+    if f == 'LEANPLUS':
+        custom_defines += " -DPHZ_LEAN_EXTRAS"
     if f.startswith('MOAR_PRESETS'):
         custom_defines += " -DMOAR_PRESETS"
 
