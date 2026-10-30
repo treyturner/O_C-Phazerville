@@ -166,6 +166,11 @@ void setup() {
   // initialize apps
   OC::apps::Init(reset_settings);
 
+#ifdef PHZ_PROFILE_APPLETS
+  extern void HEMISPHERE_profile();
+  HEMISPHERE_profile();
+#endif
+
   if (start_cal)
     OC::start_calibration();
 

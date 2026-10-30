@@ -7,6 +7,8 @@ FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET
 LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ'
 # Experiments can add flags and tag the output, e.g.
 #   T32_EXTRA_BUILD_FLAGS='-DSOME_FLAG' VARIANT=test ./build_custom_pair.sh
+# The CI "_profile" builds are:
+#   T32_EXTRA_BUILD_FLAGS='-DPHZ_PROFILE_APPLETS' VARIANT=profile ./build_custom_pair.sh
 T32_EXTRA_BUILD_FLAGS="${T32_EXTRA_BUILD_FLAGS:-}"
 VARIANT="${VARIANT:+_${VARIANT}}"
 

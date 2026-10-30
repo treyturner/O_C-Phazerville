@@ -884,6 +884,98 @@ public:
         }
     }
 
+#ifdef PHZ_PROFILE_APPLETS
+    // Times the framework's per-tick work and every applet's Controller(),
+    // then shows them sorted by worst case. Runs once at boot.
+    void ProfileApplets() {
+        static constexpr int kRuns = 256;
+        static uint32_t avg10[HEMISPHERE_AVAILABLE_APPLETS]; // tenths of a us
+        static uint32_t max10[HEMISPHERE_AVAILABLE_APPLETS];
+        static uint8_t order[HEMISPHERE_AVAILABLE_APPLETS];
+        auto tenths = [](uint32_t cycles) -> uint32_t { return cycles * 10 / (F_CPU / 1000000); };
+
+        uint32_t fw_sum = 0, fw_max = 0;
+        for (int r = 0; r < kRuns; ++r) {
+            noInterrupts();
+            const uint32_t t0 = ARM_DWT_CYCCNT;
+            ClockSetup_instance.Controller();
+            HS::frame.Load();
+            HS::frame.Send();
+            const uint32_t dt = ARM_DWT_CYCCNT - t0;
+            interrupts();
+            fw_sum += dt;
+            if (dt > fw_max) fw_max = dt;
+        }
+
+        for (int i = 0; i < HEMISPHERE_AVAILABLE_APPLETS; ++i) {
+            HemisphereApplet *applet = HS::available_applets[i].instance[LEFT_HEMISPHERE];
+            applet->BaseStart(LEFT_HEMISPHERE);
+            uint32_t sum = 0, mx = 0;
+            for (int r = 0; r < kRuns; ++r) {
+                HS::frame.Load();
+                noInterrupts();
+                const uint32_t t0 = ARM_DWT_CYCCNT;
+                applet->Controller();
+                const uint32_t dt = ARM_DWT_CYCCNT - t0;
+                interrupts();
+                sum += dt;
+                if (dt > mx) mx = dt;
+            }
+            if (i != my_applet[LEFT_HEMISPHERE]) applet->Unload();
+            avg10[i] = tenths(sum / kRuns);
+            max10[i] = tenths(mx);
+            order[i] = i;
+        }
+        for (int i = 1; i < HEMISPHERE_AVAILABLE_APPLETS; ++i) {
+            const uint8_t o = order[i];
+            int j = i;
+            for (; j > 0 && max10[order[j - 1]] < max10[o]; --j) order[j] = order[j - 1];
+            order[j] = o;
+        }
+        LoadFromPreset(preset_id);
+
+        auto wait_for_button = []() -> bool {
+            using namespace OC;
+            for (;;) {
+                // button state is updated by the UI ISR; re-read it each pass
+                asm volatile("" ::: "memory");
+                if (ui.read_immediate(CONTROL_BUTTON_R)) {
+                    while (ui.read_immediate(CONTROL_BUTTON_R)) asm volatile("" ::: "memory");
+                    return false;
+                }
+                if (ui.read_immediate(CONTROL_BUTTON_L)) {
+                    while (ui.read_immediate(CONTROL_BUTTON_L)) asm volatile("" ::: "memory");
+                    delay(50);
+                    return true;
+                }
+            }
+        };
+
+        int shown = 0;
+        for (int page = 0; shown < HEMISPHERE_AVAILABLE_APPLETS; ++page) {
+            GRAPHICS_BEGIN_FRAME(true);
+            graphics.setPrintPos(0, 0);
+            graphics.printf("us avg/max  pg %d", page + 1);
+            int y = 9;
+            if (page == 0) {
+                graphics.setPrintPos(0, y);
+                graphics.printf("frame     %3lu.%lu %3lu", tenths(fw_sum / kRuns) / 10,
+                                tenths(fw_sum / kRuns) % 10, tenths(fw_max) / 10);
+                y += 9;
+            }
+            for (; y <= 54 && shown < HEMISPHERE_AVAILABLE_APPLETS; y += 9, ++shown) {
+                const int i = order[shown];
+                graphics.setPrintPos(0, y);
+                graphics.printf("%-9.9s %3lu.%lu %3lu",
+                                HS::available_applets[i].instance[LEFT_HEMISPHERE]->applet_name(),
+                                avg10[i] / 10, avg10[i] % 10, max10[i] / 10);
+            }
+            GRAPHICS_END_FRAME();
+            if (!wait_for_button()) break;
+        }
+    }
+#endif
+
 private:
     int preset_id = 0;
     int queued_preset = -1;
@@ -1361,6 +1453,9 @@ SETTINGS_DECLARE(HemispherePreset, HEMISPHERE_SETTINGS_COUNT) {
 };
 
 HemisphereManager manager;
+#ifdef PHZ_PROFILE_APPLETS
+void HEMISPHERE_profile() { manager.ProfileApplets(); }
+#endif
 
 void ReceiveManagerSysEx() {
     if (hem_active_preset)

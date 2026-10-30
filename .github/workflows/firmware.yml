@@ -161,34 +161,52 @@ jobs:
 
           echo "Building ${label}"
           export CUSTOM_BUILD_FLAGS="${flags} -DOC_VERSION_SUFFIX=${version_suffix}"
-          pio run -t clean -e custom
-          pio run -e custom
-          cp .pio/build/custom/*.hex "${output}"
+          pio run -t clean -e custom || return 1
+          pio run -e custom || return 1
+          cp .pio/build/custom/*.hex "${output}" || return 1
         }
 
-        build_firmware \
-          "full Hemisphere T32 custom firmware" \
-          "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
-          "T32_full" \
-          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_full-${SOURCE_SHORT_SHA}.hex"
+        # a profile twin that no longer fits in flash is skipped, not fatal
+        try_build() {
+          if build_firmware "$@"; then
+            return 0
+          fi
+          if [[ "$1" == *_profile ]]; then
+            echo "::warning::skipped '$1', it does not build (probably too big for flash)"
+            return 0
+          fi
+          return 1
+        }
 
-        build_firmware \
-          "full Hemisphere VOR T32 custom firmware" \
-          "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
-          "T32_VOR_full" \
-          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_full-${SOURCE_SHORT_SHA}.hex"
+        # each build also gets a twin that times every applet at boot
+        for profile in "" "_profile"; do
+          extra="${T32_EXTRA_BUILD_FLAGS}"
+          [[ -n "${profile}" ]] && extra="${extra} -DPHZ_PROFILE_APPLETS"
 
-        build_firmware \
-          "lean Hemisphere T32 custom firmware" \
-          "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
-          "T32_lean" \
-          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_lean-${SOURCE_SHORT_SHA}.hex"
+          try_build \
+            "full Hemisphere T32 custom firmware${profile}" \
+            "${FULL_CUSTOM_BUILD_FLAGS} ${extra}" \
+            "T32_full${profile}" \
+            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_full${profile}-${SOURCE_SHORT_SHA}.hex"
 
-        build_firmware \
-          "lean Hemisphere VOR T32 custom firmware" \
-          "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
-          "T32_VOR_lean" \
-          "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_lean-${SOURCE_SHORT_SHA}.hex"
+          try_build \
+            "full Hemisphere VOR T32 custom firmware${profile}" \
+            "${FULL_CUSTOM_BUILD_FLAGS} ${extra} -DVOR" \
+            "T32_VOR_full${profile}" \
+            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_full${profile}-${SOURCE_SHORT_SHA}.hex"
+
+          try_build \
+            "lean Hemisphere T32 custom firmware${profile}" \
+            "${LEAN_CUSTOM_BUILD_FLAGS} ${extra}" \
+            "T32_lean${profile}" \
+            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_lean${profile}-${SOURCE_SHORT_SHA}.hex"
+
+          try_build \
+            "lean Hemisphere VOR T32 custom firmware${profile}" \
+            "${LEAN_CUSTOM_BUILD_FLAGS} ${extra} -DVOR" \
+            "T32_VOR_lean${profile}" \
+            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_lean${profile}-${SOURCE_SHORT_SHA}.hex"
+        done
 
     - name: Upload artifact
       if: steps.build-gate.outputs.should_build == 'true'
@@ -211,6 +229,9 @@ jobs:
         Upstream version: ${UPSTREAM_VERSION}
         Build id: ${BUILD_ID}
         Source short SHA: ${SOURCE_SHORT_SHA}
+
+        The _profile builds time every applet at boot; the left encoder button
+        pages through the results and the right one continues to the app.
         EOF
 
         gh release create "${RELEASE_VERSION}" artifacts/*.hex \
