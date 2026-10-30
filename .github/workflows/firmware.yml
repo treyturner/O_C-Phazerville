@@ -20,8 +20,10 @@ permissions:
 env:
   UPSTREAM_REPOSITORY: djphazer/O_C-Phazerville
   UPSTREAM_BRANCH: T32
-  FULL_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+LTO
-  LEAN_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ,+LEANPLUS
+  # every applet bundle (less a few), Captain MIDI, no Wave-Edit, 8 presets
+  LTO_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+MIDI,+TRIM,+LTO
+  # the same without LTO, minus the applets that no longer fit
+  NOLTO_BUILD_REQUEST: oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+MIDI,+TRIM,+NOLTOCUTS
   # extra flags for every build, for experiments
   T32_EXTRA_BUILD_FLAGS: ''
 
@@ -98,8 +100,8 @@ jobs:
       if: steps.build-gate.outputs.should_build == 'true'
       run: |
         {
-          echo "FULL_CUSTOM_BUILD_FLAGS=$(GH_COMMENT="${FULL_BUILD_REQUEST}" python software/res/parse_build_request.py)"
-          echo "LEAN_CUSTOM_BUILD_FLAGS=$(GH_COMMENT="${LEAN_BUILD_REQUEST}" python software/res/parse_build_request.py)"
+          echo "LTO_CUSTOM_BUILD_FLAGS=$(GH_COMMENT="${LTO_BUILD_REQUEST}" python software/res/parse_build_request.py)"
+          echo "NOLTO_CUSTOM_BUILD_FLAGS=$(GH_COMMENT="${NOLTO_BUILD_REQUEST}" python software/res/parse_build_request.py)"
         } >> "$GITHUB_ENV"
 
     - name: Merge upstream source
@@ -151,7 +153,7 @@ jobs:
       if: steps.build-gate.outputs.should_build == 'true'
       working-directory: software
       run: |
-        mkdir -p ../artifacts
+        mkdir -p ../artifacts/profile
 
         build_firmware() {
           local label="$1"
@@ -178,34 +180,39 @@ jobs:
           return 1
         }
 
-        # each build also gets a twin that times every applet at boot
+        # each build also gets a twin that times every applet at boot. The twins
+        # only go to the job's artifacts, never to the release.
         for profile in "" "_profile"; do
           extra="${T32_EXTRA_BUILD_FLAGS}"
-          [[ -n "${profile}" ]] && extra="${extra} -DPHZ_PROFILE_APPLETS"
+          dir="../artifacts"
+          if [[ -n "${profile}" ]]; then
+            extra="${extra} -DPHZ_PROFILE_APPLETS"
+            dir="../artifacts/profile"
+          fi
 
           try_build \
-            "full Hemisphere T32 custom firmware${profile}" \
-            "${FULL_CUSTOM_BUILD_FLAGS} ${extra}" \
-            "T32_full${profile}" \
-            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_full${profile}-${SOURCE_SHORT_SHA}.hex"
+            "T32${profile}" \
+            "${LTO_CUSTOM_BUILD_FLAGS} ${extra}" \
+            "T32${profile}" \
+            "${dir}/o_C-phazerville-${RELEASE_VERSION}_T32${profile}-${SOURCE_SHORT_SHA}.hex"
 
           try_build \
-            "full Hemisphere VOR T32 custom firmware${profile}" \
-            "${FULL_CUSTOM_BUILD_FLAGS} ${extra} -DVOR" \
-            "T32_VOR_full${profile}" \
-            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_full${profile}-${SOURCE_SHORT_SHA}.hex"
+            "T32_VOR${profile}" \
+            "${LTO_CUSTOM_BUILD_FLAGS} ${extra} -DVOR" \
+            "T32_VOR${profile}" \
+            "${dir}/o_C-phazerville-${RELEASE_VERSION}_T32_VOR${profile}-${SOURCE_SHORT_SHA}.hex"
 
           try_build \
-            "lean Hemisphere T32 custom firmware${profile}" \
-            "${LEAN_CUSTOM_BUILD_FLAGS} ${extra}" \
-            "T32_lean${profile}" \
-            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_lean${profile}-${SOURCE_SHORT_SHA}.hex"
+            "T32_NoLTO${profile}" \
+            "${NOLTO_CUSTOM_BUILD_FLAGS} ${extra}" \
+            "T32_NoLTO${profile}" \
+            "${dir}/o_C-phazerville-${RELEASE_VERSION}_T32_NoLTO${profile}-${SOURCE_SHORT_SHA}.hex"
 
           try_build \
-            "lean Hemisphere VOR T32 custom firmware${profile}" \
-            "${LEAN_CUSTOM_BUILD_FLAGS} ${extra} -DVOR" \
-            "T32_VOR_lean${profile}" \
-            "../artifacts/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_lean${profile}-${SOURCE_SHORT_SHA}.hex"
+            "T32_VOR_NoLTO${profile}" \
+            "${NOLTO_CUSTOM_BUILD_FLAGS} ${extra} -DVOR" \
+            "T32_VOR_NoLTO${profile}" \
+            "${dir}/o_C-phazerville-${RELEASE_VERSION}_T32_VOR_NoLTO${profile}-${SOURCE_SHORT_SHA}.hex"
         done
 
     - name: Upload artifact
@@ -215,6 +222,15 @@ jobs:
         name: o_C-${{env.OC_ARTIFACT_TAG}}
         include-hidden-files: true
         path: artifacts/*.hex
+
+    - name: Upload profiler artifact
+      if: steps.build-gate.outputs.should_build == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: o_C-${{env.OC_ARTIFACT_TAG}}-profile
+        include-hidden-files: true
+        if-no-files-found: warn
+        path: artifacts/profile/*.hex
 
     - name: Publish release
       if: github.ref == 'refs/heads/main' && steps.build-gate.outputs.should_build == 'true'
@@ -230,8 +246,8 @@ jobs:
         Build id: ${BUILD_ID}
         Source short SHA: ${SOURCE_SHORT_SHA}
 
-        The _profile builds time every applet at boot; the left encoder button
-        pages through the results and the right one continues to the app.
+        Profiler builds (time every applet at boot) are attached to the workflow
+        run as a separate artifact, not to this release.
         EOF
 
         gh release create "${RELEASE_VERSION}" artifacts/*.hex \

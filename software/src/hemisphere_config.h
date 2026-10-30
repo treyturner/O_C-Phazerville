@@ -213,20 +213,28 @@ AppletRegistry reg{
     DeclareApplet<DivSeq>{68, 0x06},
     DeclareApplet<DivSeq10>{80, 0x06},
     DeclareApplet<DrumMap>{57, 0x02},
+#ifndef PHZ_NOLTO_CUTS
     DeclareApplet<EuclidO>{96, 0x00},
+#endif
     DeclareApplet<EuclidX>{15, 0x02},
     DeclareApplet<EnigmaJr>{45, 0x02},
     DeclareApplet<MarkoV>{98, 0x00},
     DeclareApplet<MarkovPerc>{97, 0x00},
     DeclareApplet<MiniArp>{92, 0x00},
     DeclareApplet<Pigeons>{71, 0x02},
+#ifndef PHZ_NOLTO_CUTS
     DeclareApplet<TruthCat3>{94, 0x00},
+#endif
+#ifndef PHZ_TRIM_APPLETS
     DeclareApplet<TruthCat4>{93, 0x00},
+#endif
     DeclareApplet<PolyDiv>{72, 0x06},
     DeclareApplet<ProbabilityDivider>{59, 0x04},
     DeclareApplet<ProbabilityMelody>{62, 0x04},
     DeclareApplet<ResetClock>{70, 0x14},
+#ifndef PHZ_NOLTO_CUTS
     DeclareApplet<Seq32>{75, 0x02},
+#endif
     DeclareApplet<SeqPlay7>{76, 0x02},
     DeclareApplet<SequenceX>{14, 0x02},
     DeclareApplet<ShiftReg>{77, 0x45},
@@ -278,8 +286,10 @@ AppletRegistry reg{
     DeclareApplet<GatedVCA>{17, 0x50},
     DeclareApplet<Logic>{10, 0x44},
     DeclareApplet<Metronome>{50, 0x04},
+#ifndef PHZ_TRIM_APPLETS
     DeclareApplet<hMIDIIn>{150, 0x20},
     DeclareApplet<hMIDIOut>{27, 0x20},
+#endif
     DeclareApplet<Schmitt>{40, 0x40},
     DeclareApplet<Scope>{23, 0x80},
     DeclareApplet<ShiftGate>{48, 0x45},
@@ -294,7 +304,9 @@ AppletRegistry reg{
     DeclareApplet<Panner>{100, 0x10},
 #endif
 #ifdef APPLETS_WEIRDSTUFF
+#ifndef PHZ_TRIM_APPLETS
     DeclareApplet<BitBeat>{79, 0x01},
+#endif
     DeclareApplet<BootsNCat>{55, 0x80},
     DeclareApplet<BugCrack>{51, 0x80},
     DeclareApplet<Binary>{41, 0x41},
@@ -310,40 +322,6 @@ AppletRegistry reg{
 #endif
 
 #endif // !PEWPEWPEW
-
-#if defined(PHZ_LEAN_EXTRAS) && defined(PEWPEWPEW)
-    // fork-only: fill the flash PEWPEWPEW leaves free
-    // logic, gates, utilities
-    DeclareApplet<Logic>{10, 0x44},
-    DeclareApplet<Compare>{30, 0x10},
-    DeclareApplet<Switch>{3, 0x10},
-    DeclareApplet<GatedVCA>{17, 0x50},
-    DeclareApplet<Panner>{100, 0x10},
-    DeclareApplet<GateDelay>{29, 0x04},
-    DeclareApplet<ClockSkip>{28, 0x04},
-    DeclareApplet<Tuner>{39, 0x80},
-    DeclareApplet<LowerRenz>{21, 0x01},
-    DeclareApplet<Combin8>{82, 0x10},
-    DeclareApplet<Shuffle>{36, 0x04},
-    DeclareApplet<Trending>{37, 0x40},
-    DeclareApplet<ShiftGate>{48, 0x45},
-    // quantizers
-    DeclareApplet<DualQuant>{9, 0x08},
-    DeclareApplet<ScaleDuet>{26, 0x08},
-    DeclareApplet<OffsetQuant>{90, 0x08},
-    DeclareApplet<Chordinator>{64, 0x08},
-    DeclareApplet<SeQuant>{86, 0x08},
-    DeclareApplet<DuoTET>{63, 0x08},
-    DeclareApplet<Calibr8>{88, 0x10},
-    DeclareApplet<MultiScale>{73, 0x08},
-    // sequencing
-    DeclareApplet<ASR>{47, 0x09},
-    DeclareApplet<Carpeggio>{32, 0x0a},
-    DeclareApplet<ShiftReg>{77, 0x45},
-    DeclareApplet<TrigSeq>{11, 0x06},
-    DeclareApplet<TrigSeq16>{25, 0x06},
-    DeclareApplet<CVRecV2>{24, 0x02},
-#endif
 
 };
 

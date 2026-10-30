@@ -78,8 +78,12 @@ for item in flags:
         custom_defines += " -DENABLE_APP_REFERENCES"
     if f.startswith('GRIDS2'):
         custom_defines += " -DDRUMMAP_GRIDS2"
-    if f == 'LEANPLUS':
-        custom_defines += " -DPHZ_LEAN_EXTRAS"
+    if f == 'TRIM':
+        # fork-only: drop hMIDIIn/Out, BitBeat and TruthCat4 to make room for Captain MIDI
+        custom_defines += " -DPHZ_TRIM_APPLETS"
+    if f == 'NOLTOCUTS':
+        # fork-only: the extra applets that don't fit without LTO
+        custom_defines += " -DPHZ_NOLTO_CUTS"
     if f.startswith('MOAR_PRESETS'):
         custom_defines += " -DMOAR_PRESETS"
 

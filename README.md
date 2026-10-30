@@ -74,35 +74,25 @@ _**Pro-tip**_: If you decide to fork the project, and enable GitHub Actions on y
 
 This fork tracks upstream's `T32` branch and builds four Teensy 3.2 firmwares with `software/build_custom_pair.sh` and `.github/workflows/firmware.yml`. CI builds on every push to `main` and publishes a versioned release. A daily check merges and builds new commits from upstream `T32`.
 
-Full Hemisphere uses every applet bundle except CVSeq, drops the Wave-Edit app, and keeps 8 presets. It needs LTO to fit. It includes every applet backported from upstream `main` (see `pr/t32-fixes-and-backports`), including SeQuant and Panner. CVSeq makes room for them; upstream `main` no longer registers it either.
-```
-APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, NOCVSEQ, MOAR_PRESETS, LTO
-```
+Both pairs have every applet bundle (including the applets backported from upstream `main`, see `pr/t32-fixes-and-backports`) and the Captain MIDI app. Neither has Wave-Edit, Automatonnetz or CVSeq (upstream `main` no longer registers it either), and both have 8 presets. In place of the hMIDIIn and hMIDIOut applets there is Captain MIDI, and BitBeat and TruthCat4 are left out to make room for it.
 
-Lean Hemisphere uses upstream's curated applet set plus 27 more applets (`LEANPLUS`, listed in `hemisphere_config.h`), and adds the Captain MIDI and Automatonnetz apps. It keeps the Wave-Edit app, uses 4 presets instead of 8, and doesn't use LTO.
-```
-PEWPEWPEW, MIDI, AUTOMATONNETZ, LEANPLUS
-```
+| Build | LTO | Request |
+| --- | --- | --- |
+| `T32`, `T32_VOR` | yes | `APPLET_SEQ, APPLET_Q, APPLET_MOD, APPLET_UTIL, APPLET_WEIRD, NOWAVE, NOCVSEQ, MOAR_PRESETS, MIDI, TRIM, LTO` |
+| `T32_NoLTO`, `T32_VOR_NoLTO` | no | the same without `LTO`, plus `NOLTOCUTS` |
 
-Lean is a subset of full's applets. To make room for the two apps, it leaves out these 17:
+The `NoLTO` builds exist as an A/B test against LTO. They leave out three more applets that don't fit without it: EuclidO, Seq32 and TruthCat3. Everything else is the same, so differences in behavior come from LTO.
 
-| Bundle | Applets left out |
-| --- | --- |
-| Sequencing | EnigmaJr, EuclidO, ResetClock, Seq32, SeqPlay7, SwitchSeq, TruthCat3, TruthCat4 |
-| Quantizers | EnsOscKey |
-| Logic and utility | hMIDIIn, hMIDIOut, TLNeuron |
-| Weird stuff | Binary, BitBeat, BootsNCat, Palimpsest, RunglBook |
-
-Full has no Captain MIDI or Automatonnetz, so MIDI-to-CV there is the hMIDIIn and hMIDIOut applets only. Lean has the apps but not those two applets.
-
-| Build | Target | RAM | Flash | Flash left |
-| --- | --- | ---: | ---: | ---: |
-| Full Hemisphere | T32 | 42,228 / 65,536 bytes | 256,044 / 262,144 bytes | 6,100 bytes |
-| Full Hemisphere | T32 VOR | 42,332 / 65,536 bytes | 258,780 / 262,144 bytes | 3,364 bytes |
-| Lean Hemisphere | T32 | 43,276 / 65,536 bytes | 254,688 / 262,144 bytes | 7,456 bytes |
-| Lean Hemisphere | T32 VOR | 43,324 / 65,536 bytes | 257,136 / 262,144 bytes | 5,008 bytes |
+| Build | RAM | Flash | Flash left |
+| --- | ---: | ---: | ---: |
+| T32 | 42,880 / 65,536 bytes | 253,096 / 262,144 bytes | 9,048 bytes |
+| T32 VOR | 43,148 / 65,536 bytes | 255,800 / 262,144 bytes | 6,344 bytes |
+| T32 NoLTO | 43,224 / 65,536 bytes | 257,260 / 262,144 bytes | 4,884 bytes |
+| T32 VOR NoLTO | 43,272 / 65,536 bytes | 259,844 / 262,144 bytes | 2,300 bytes |
 
 T32 allocates every registered applet statically, so applets cost RAM whether or not they are loaded.
+
+Each build also gets a `_profile` twin that times the framework and every applet at boot (`PHZ_PROFILE_APPLETS`). The left encoder button pages through the results, sorted by worst case, and the right one continues to the app. Profile builds are attached to the workflow run as a separate artifact and are not part of the release. A twin that doesn't fit in flash is skipped with a warning.
 
 ### Option 2: Arduino IDE
 Instead of Platform IO, you can use the latest version of the Arduino IDE + Teensyduino extension. The newer 2.x series should work, no need to install an old version.

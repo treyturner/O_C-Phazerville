@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Every applet bundle, no Wave-Edit, 8 presets. Needs LTO to fit.
-FULL_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+LTO'
-# Upstream's curated applets plus Captain MIDI, Automatonnetz and the fork's extras.
-LEAN_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+PEWPEWPEW,+MIDI,+AUTOMATONNETZ,+LEANPLUS'
+# Every applet bundle (less a few), Captain MIDI, no Wave-Edit, 8 presets.
+LTO_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+MIDI,+TRIM,+LTO'
+# The same without LTO, minus the applets that no longer fit.
+NOLTO_BUILD_REQUEST='oc-build/1 target=T32_VOR apps=+APPLET_SEQ,+APPLET_Q,+APPLET_MOD,+APPLET_UTIL,+APPLET_WEIRD,+NOWAVE,+NOCVSEQ,+MOAR_PRESETS,+MIDI,+TRIM,+NOLTOCUTS'
 # Experiments can add flags and tag the output, e.g.
 #   T32_EXTRA_BUILD_FLAGS='-DSOME_FLAG' VARIANT=test ./build_custom_pair.sh
 # The CI "_profile" builds are:
@@ -25,8 +25,8 @@ if [[ ! -x "${PIO}" ]]; then
   fi
 fi
 
-FULL_CUSTOM_BUILD_FLAGS="$(GH_COMMENT="${FULL_BUILD_REQUEST}" python3 "${SCRIPT_DIR}/res/parse_build_request.py")"
-LEAN_CUSTOM_BUILD_FLAGS="$(GH_COMMENT="${LEAN_BUILD_REQUEST}" python3 "${SCRIPT_DIR}/res/parse_build_request.py")"
+LTO_CUSTOM_BUILD_FLAGS="$(GH_COMMENT="${LTO_BUILD_REQUEST}" python3 "${SCRIPT_DIR}/res/parse_build_request.py")"
+NOLTO_CUSTOM_BUILD_FLAGS="$(GH_COMMENT="${NOLTO_BUILD_REQUEST}" python3 "${SCRIPT_DIR}/res/parse_build_request.py")"
 OC_VERSION="$(tail -n 1 "${SCRIPT_DIR}/src/OC_version.h" | tr -d '"')"
 SOURCE_SHORT_SHA="$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
 ARTIFACT_DIR="${REPO_ROOT}/artifacts"
@@ -35,46 +35,25 @@ mkdir -p "${ARTIFACT_DIR}"
 
 cd "${SCRIPT_DIR}"
 
-build_firmware() {
-  local label="$1"
-  local flags="$2"
-  local version_suffix="$3"
-  local output="$4"
+outputs=()
 
-  echo "Building ${label}"
-  export CUSTOM_BUILD_FLAGS="${flags} -DOC_VERSION_SUFFIX=${version_suffix}"
+build_firmware() {
+  local name="$1"
+  local flags="$2"
+  local output="${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_${name}${VARIANT}-${SOURCE_SHORT_SHA}.hex"
+
+  echo "Building ${name}${VARIANT}"
+  export CUSTOM_BUILD_FLAGS="${flags} -DOC_VERSION_SUFFIX=${name}${VARIANT}"
   "${PIO}" run -t clean -e custom
   "${PIO}" run -e custom
   cp .pio/build/custom/*.hex "${output}"
+  outputs+=("${output}")
 }
 
-build_firmware \
-  "full Hemisphere T32 custom firmware" \
-  "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
-  "T32_full${VARIANT}" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_full${VARIANT}-${SOURCE_SHORT_SHA}.hex"
-
-build_firmware \
-  "full Hemisphere VOR T32 custom firmware" \
-  "${FULL_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
-  "T32_VOR_full${VARIANT}" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_full${VARIANT}-${SOURCE_SHORT_SHA}.hex"
-
-build_firmware \
-  "lean Hemisphere T32 custom firmware" \
-  "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}" \
-  "T32_lean${VARIANT}" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex"
-
-build_firmware \
-  "lean Hemisphere VOR T32 custom firmware" \
-  "${LEAN_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR" \
-  "T32_VOR_lean${VARIANT}" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex"
+build_firmware "T32"           "${LTO_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}"
+build_firmware "T32_VOR"       "${LTO_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR"
+build_firmware "T32_NoLTO"     "${NOLTO_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS}"
+build_firmware "T32_VOR_NoLTO" "${NOLTO_CUSTOM_BUILD_FLAGS} ${T32_EXTRA_BUILD_FLAGS} -DVOR"
 
 echo "Built artifacts:"
-ls -lh \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_full${VARIANT}-${SOURCE_SHORT_SHA}.hex" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_full${VARIANT}-${SOURCE_SHORT_SHA}.hex" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex" \
-  "${ARTIFACT_DIR}/o_C-phazerville-${OC_VERSION}_T32_VOR_lean${VARIANT}-${SOURCE_SHORT_SHA}.hex"
+ls -lh "${outputs[@]}"
